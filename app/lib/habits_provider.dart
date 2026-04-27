@@ -42,8 +42,24 @@ class HabitsNotifier extends _$HabitsNotifier {
     return _watchHabitStatuses(database);
   }
 
-  void addHabit(String name) {
-    ref.read(habitsRepositoryProvider).createHabit(name);
+  void addHabit({
+    required String name,
+    required DateTime startDate,
+    DateTime? endDate,
+    required String frequencyType,
+    String? specificDays,
+    int? weeklyGoal,
+    String? lifeAreaId,
+  }) {
+    ref.read(habitsRepositoryProvider).createHabit(
+          name: name,
+          startDate: startDate,
+          endDate: endDate,
+          frequencyType: frequencyType,
+          specificDays: specificDays,
+          weeklyGoal: weeklyGoal,
+          lifeAreaId: lifeAreaId,
+        );
   }
 
   void toggleHabit(String habitId, bool isCompleted) {
@@ -70,7 +86,29 @@ class HabitsNotifier extends _$HabitsNotifier {
         }
 
         final today = _normalizeDate(DateTime.now());
+        final todayWeekday = DateTime.now().weekday; // 1=Mon, 7=Sun
+
         final combined = currentHabits
+            .where((habit) {
+              // 1. Validar fechas de inicio y fin
+              final habitStart = _normalizeDate(habit.startDate);
+              if (today.isBefore(habitStart)) return false;
+
+              if (habit.endDate != null) {
+                final habitEnd = _normalizeDate(habit.endDate!);
+                if (today.isAfter(habitEnd)) return false;
+              }
+
+              // 2. Validar frecuencia
+              if (habit.frequencyType == 'specific_days' && habit.specificDays != null) {
+                final days = habit.specificDays!.split(',');
+                if (!days.contains(todayWeekday.toString())) return false;
+              }
+              // Si es 'weekly_goal' o 'daily', por ahora lo mostramos todos los días 
+              // hasta que implementemos la lógica de la barra de progreso semanal.
+
+              return true;
+            })
             .map(
               (habit) => HabitWithStatus(
                 habit: habit,

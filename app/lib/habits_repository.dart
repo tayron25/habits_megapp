@@ -14,13 +14,27 @@ class HabitsRepository {
   final AppDatabase _database;
   final Uuid _uuid = const Uuid();
 
-  Future<void> createHabit(String name) async {
+  Future<void> createHabit({
+    required String name,
+    required DateTime startDate,
+    DateTime? endDate,
+    required String frequencyType,
+    String? specificDays,
+    int? weeklyGoal,
+    String? lifeAreaId,
+  }) async {
     final id = _uuid.v4();
 
     await _database.into(_database.habits).insert(
           HabitsCompanion.insert(
             id: id,
             name: name,
+            startDate: Value(startDate),
+            endDate: Value(endDate),
+            frequencyType: Value(frequencyType),
+            specificDays: Value(specificDays),
+            weeklyGoal: Value(weeklyGoal),
+            lifeAreaId: Value(lifeAreaId),
             isSynced: const Value(false),
           ),
         );
@@ -29,8 +43,14 @@ class HabitsRepository {
       await _supabaseClient.from('habits').insert({
         'id': id,
         'name': name,
+        'start_date': startDate.toIso8601String(),
+        'end_date': endDate?.toIso8601String(),
+        'frequency_type': frequencyType,
+        'specific_days': specificDays,
+        'weekly_goal': weeklyGoal,
+        'life_area_id': lifeAreaId,
         'created_at': DateTime.now().toIso8601String(),
-        'is_synced': false,
+        'is_synced': true,
       });
 
       await (_database.update(_database.habits)..where((habit) => habit.id.equals(id)))

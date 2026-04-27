@@ -311,11 +311,12 @@ class NotesCompanion extends UpdateCompanion<Note> {
   }
 }
 
-class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
+class $LifeAreasTable extends LifeAreas
+    with TableInfo<$LifeAreasTable, LifeArea> {
   @override
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
-  $HabitsTable(this.attachedDatabase, [this._alias]);
+  $LifeAreasTable(this.attachedDatabase, [this._alias]);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
@@ -333,6 +334,15 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
+  );
+  static const VerificationMeta _iconMeta = const VerificationMeta('icon');
+  @override
+  late final GeneratedColumn<String> icon = GeneratedColumn<String>(
+    'icon',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
@@ -362,7 +372,426 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     clientDefault: () => false,
   );
   @override
-  List<GeneratedColumn> get $columns => [id, name, createdAt, isSynced];
+  List<GeneratedColumn> get $columns => [id, name, icon, createdAt, isSynced];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'life_areas';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LifeArea> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('icon')) {
+      context.handle(
+        _iconMeta,
+        icon.isAcceptableOrUnknown(data['icon']!, _iconMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LifeArea map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LifeArea(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      icon: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}icon'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+    );
+  }
+
+  @override
+  $LifeAreasTable createAlias(String alias) {
+    return $LifeAreasTable(attachedDatabase, alias);
+  }
+}
+
+class LifeArea extends DataClass implements Insertable<LifeArea> {
+  final String id;
+  final String name;
+  final String? icon;
+  final DateTime createdAt;
+  final bool isSynced;
+  const LifeArea({
+    required this.id,
+    required this.name,
+    this.icon,
+    required this.createdAt,
+    required this.isSynced,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['name'] = Variable<String>(name);
+    if (!nullToAbsent || icon != null) {
+      map['icon'] = Variable<String>(icon);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['is_synced'] = Variable<bool>(isSynced);
+    return map;
+  }
+
+  LifeAreasCompanion toCompanion(bool nullToAbsent) {
+    return LifeAreasCompanion(
+      id: Value(id),
+      name: Value(name),
+      icon: icon == null && nullToAbsent ? const Value.absent() : Value(icon),
+      createdAt: Value(createdAt),
+      isSynced: Value(isSynced),
+    );
+  }
+
+  factory LifeArea.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return LifeArea(
+      id: serializer.fromJson<String>(json['id']),
+      name: serializer.fromJson<String>(json['name']),
+      icon: serializer.fromJson<String?>(json['icon']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'name': serializer.toJson<String>(name),
+      'icon': serializer.toJson<String?>(icon),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'isSynced': serializer.toJson<bool>(isSynced),
+    };
+  }
+
+  LifeArea copyWith({
+    String? id,
+    String? name,
+    Value<String?> icon = const Value.absent(),
+    DateTime? createdAt,
+    bool? isSynced,
+  }) => LifeArea(
+    id: id ?? this.id,
+    name: name ?? this.name,
+    icon: icon.present ? icon.value : this.icon,
+    createdAt: createdAt ?? this.createdAt,
+    isSynced: isSynced ?? this.isSynced,
+  );
+  LifeArea copyWithCompanion(LifeAreasCompanion data) {
+    return LifeArea(
+      id: data.id.present ? data.id.value : this.id,
+      name: data.name.present ? data.name.value : this.name,
+      icon: data.icon.present ? data.icon.value : this.icon,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LifeArea(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('icon: $icon, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('isSynced: $isSynced')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, name, icon, createdAt, isSynced);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is LifeArea &&
+          other.id == this.id &&
+          other.name == this.name &&
+          other.icon == this.icon &&
+          other.createdAt == this.createdAt &&
+          other.isSynced == this.isSynced);
+}
+
+class LifeAreasCompanion extends UpdateCompanion<LifeArea> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String?> icon;
+  final Value<DateTime> createdAt;
+  final Value<bool> isSynced;
+  final Value<int> rowid;
+  const LifeAreasCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.icon = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  LifeAreasCompanion.insert({
+    required String id,
+    required String name,
+    this.icon = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name);
+  static Insertable<LifeArea> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? icon,
+    Expression<DateTime>? createdAt,
+    Expression<bool>? isSynced,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (icon != null) 'icon': icon,
+      if (createdAt != null) 'created_at': createdAt,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  LifeAreasCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String?>? icon,
+    Value<DateTime>? createdAt,
+    Value<bool>? isSynced,
+    Value<int>? rowid,
+  }) {
+    return LifeAreasCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      icon: icon ?? this.icon,
+      createdAt: createdAt ?? this.createdAt,
+      isSynced: isSynced ?? this.isSynced,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (icon.present) {
+      map['icon'] = Variable<String>(icon.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('LifeAreasCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('icon: $icon, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HabitsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _startDateMeta = const VerificationMeta(
+    'startDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> startDate = GeneratedColumn<DateTime>(
+    'start_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _endDateMeta = const VerificationMeta(
+    'endDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> endDate = GeneratedColumn<DateTime>(
+    'end_date',
+    aliasedName,
+    true,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _frequencyTypeMeta = const VerificationMeta(
+    'frequencyType',
+  );
+  @override
+  late final GeneratedColumn<String> frequencyType = GeneratedColumn<String>(
+    'frequency_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('daily'),
+  );
+  static const VerificationMeta _specificDaysMeta = const VerificationMeta(
+    'specificDays',
+  );
+  @override
+  late final GeneratedColumn<String> specificDays = GeneratedColumn<String>(
+    'specific_days',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _weeklyGoalMeta = const VerificationMeta(
+    'weeklyGoal',
+  );
+  @override
+  late final GeneratedColumn<int> weeklyGoal = GeneratedColumn<int>(
+    'weekly_goal',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _lifeAreaIdMeta = const VerificationMeta(
+    'lifeAreaId',
+  );
+  @override
+  late final GeneratedColumn<String> lifeAreaId = GeneratedColumn<String>(
+    'life_area_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    clientDefault: () => false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    name,
+    startDate,
+    endDate,
+    frequencyType,
+    specificDays,
+    weeklyGoal,
+    lifeAreaId,
+    createdAt,
+    isSynced,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -387,6 +816,51 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
       );
     } else if (isInserting) {
       context.missing(_nameMeta);
+    }
+    if (data.containsKey('start_date')) {
+      context.handle(
+        _startDateMeta,
+        startDate.isAcceptableOrUnknown(data['start_date']!, _startDateMeta),
+      );
+    }
+    if (data.containsKey('end_date')) {
+      context.handle(
+        _endDateMeta,
+        endDate.isAcceptableOrUnknown(data['end_date']!, _endDateMeta),
+      );
+    }
+    if (data.containsKey('frequency_type')) {
+      context.handle(
+        _frequencyTypeMeta,
+        frequencyType.isAcceptableOrUnknown(
+          data['frequency_type']!,
+          _frequencyTypeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('specific_days')) {
+      context.handle(
+        _specificDaysMeta,
+        specificDays.isAcceptableOrUnknown(
+          data['specific_days']!,
+          _specificDaysMeta,
+        ),
+      );
+    }
+    if (data.containsKey('weekly_goal')) {
+      context.handle(
+        _weeklyGoalMeta,
+        weeklyGoal.isAcceptableOrUnknown(data['weekly_goal']!, _weeklyGoalMeta),
+      );
+    }
+    if (data.containsKey('life_area_id')) {
+      context.handle(
+        _lifeAreaIdMeta,
+        lifeAreaId.isAcceptableOrUnknown(
+          data['life_area_id']!,
+          _lifeAreaIdMeta,
+        ),
+      );
     }
     if (data.containsKey('created_at')) {
       context.handle(
@@ -417,6 +891,30 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
         DriftSqlType.string,
         data['${effectivePrefix}name'],
       )!,
+      startDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}start_date'],
+      )!,
+      endDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}end_date'],
+      ),
+      frequencyType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}frequency_type'],
+      )!,
+      specificDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}specific_days'],
+      ),
+      weeklyGoal: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}weekly_goal'],
+      ),
+      lifeAreaId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}life_area_id'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -437,11 +935,23 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
 class Habit extends DataClass implements Insertable<Habit> {
   final String id;
   final String name;
+  final DateTime startDate;
+  final DateTime? endDate;
+  final String frequencyType;
+  final String? specificDays;
+  final int? weeklyGoal;
+  final String? lifeAreaId;
   final DateTime createdAt;
   final bool isSynced;
   const Habit({
     required this.id,
     required this.name,
+    required this.startDate,
+    this.endDate,
+    required this.frequencyType,
+    this.specificDays,
+    this.weeklyGoal,
+    this.lifeAreaId,
     required this.createdAt,
     required this.isSynced,
   });
@@ -450,6 +960,20 @@ class Habit extends DataClass implements Insertable<Habit> {
     final map = <String, Expression>{};
     map['id'] = Variable<String>(id);
     map['name'] = Variable<String>(name);
+    map['start_date'] = Variable<DateTime>(startDate);
+    if (!nullToAbsent || endDate != null) {
+      map['end_date'] = Variable<DateTime>(endDate);
+    }
+    map['frequency_type'] = Variable<String>(frequencyType);
+    if (!nullToAbsent || specificDays != null) {
+      map['specific_days'] = Variable<String>(specificDays);
+    }
+    if (!nullToAbsent || weeklyGoal != null) {
+      map['weekly_goal'] = Variable<int>(weeklyGoal);
+    }
+    if (!nullToAbsent || lifeAreaId != null) {
+      map['life_area_id'] = Variable<String>(lifeAreaId);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['is_synced'] = Variable<bool>(isSynced);
     return map;
@@ -459,6 +983,20 @@ class Habit extends DataClass implements Insertable<Habit> {
     return HabitsCompanion(
       id: Value(id),
       name: Value(name),
+      startDate: Value(startDate),
+      endDate: endDate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(endDate),
+      frequencyType: Value(frequencyType),
+      specificDays: specificDays == null && nullToAbsent
+          ? const Value.absent()
+          : Value(specificDays),
+      weeklyGoal: weeklyGoal == null && nullToAbsent
+          ? const Value.absent()
+          : Value(weeklyGoal),
+      lifeAreaId: lifeAreaId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lifeAreaId),
       createdAt: Value(createdAt),
       isSynced: Value(isSynced),
     );
@@ -472,6 +1010,12 @@ class Habit extends DataClass implements Insertable<Habit> {
     return Habit(
       id: serializer.fromJson<String>(json['id']),
       name: serializer.fromJson<String>(json['name']),
+      startDate: serializer.fromJson<DateTime>(json['startDate']),
+      endDate: serializer.fromJson<DateTime?>(json['endDate']),
+      frequencyType: serializer.fromJson<String>(json['frequencyType']),
+      specificDays: serializer.fromJson<String?>(json['specificDays']),
+      weeklyGoal: serializer.fromJson<int?>(json['weeklyGoal']),
+      lifeAreaId: serializer.fromJson<String?>(json['lifeAreaId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
     );
@@ -482,6 +1026,12 @@ class Habit extends DataClass implements Insertable<Habit> {
     return <String, dynamic>{
       'id': serializer.toJson<String>(id),
       'name': serializer.toJson<String>(name),
+      'startDate': serializer.toJson<DateTime>(startDate),
+      'endDate': serializer.toJson<DateTime?>(endDate),
+      'frequencyType': serializer.toJson<String>(frequencyType),
+      'specificDays': serializer.toJson<String?>(specificDays),
+      'weeklyGoal': serializer.toJson<int?>(weeklyGoal),
+      'lifeAreaId': serializer.toJson<String?>(lifeAreaId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'isSynced': serializer.toJson<bool>(isSynced),
     };
@@ -490,11 +1040,23 @@ class Habit extends DataClass implements Insertable<Habit> {
   Habit copyWith({
     String? id,
     String? name,
+    DateTime? startDate,
+    Value<DateTime?> endDate = const Value.absent(),
+    String? frequencyType,
+    Value<String?> specificDays = const Value.absent(),
+    Value<int?> weeklyGoal = const Value.absent(),
+    Value<String?> lifeAreaId = const Value.absent(),
     DateTime? createdAt,
     bool? isSynced,
   }) => Habit(
     id: id ?? this.id,
     name: name ?? this.name,
+    startDate: startDate ?? this.startDate,
+    endDate: endDate.present ? endDate.value : this.endDate,
+    frequencyType: frequencyType ?? this.frequencyType,
+    specificDays: specificDays.present ? specificDays.value : this.specificDays,
+    weeklyGoal: weeklyGoal.present ? weeklyGoal.value : this.weeklyGoal,
+    lifeAreaId: lifeAreaId.present ? lifeAreaId.value : this.lifeAreaId,
     createdAt: createdAt ?? this.createdAt,
     isSynced: isSynced ?? this.isSynced,
   );
@@ -502,6 +1064,20 @@ class Habit extends DataClass implements Insertable<Habit> {
     return Habit(
       id: data.id.present ? data.id.value : this.id,
       name: data.name.present ? data.name.value : this.name,
+      startDate: data.startDate.present ? data.startDate.value : this.startDate,
+      endDate: data.endDate.present ? data.endDate.value : this.endDate,
+      frequencyType: data.frequencyType.present
+          ? data.frequencyType.value
+          : this.frequencyType,
+      specificDays: data.specificDays.present
+          ? data.specificDays.value
+          : this.specificDays,
+      weeklyGoal: data.weeklyGoal.present
+          ? data.weeklyGoal.value
+          : this.weeklyGoal,
+      lifeAreaId: data.lifeAreaId.present
+          ? data.lifeAreaId.value
+          : this.lifeAreaId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
     );
@@ -512,6 +1088,12 @@ class Habit extends DataClass implements Insertable<Habit> {
     return (StringBuffer('Habit(')
           ..write('id: $id, ')
           ..write('name: $name, ')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
+          ..write('frequencyType: $frequencyType, ')
+          ..write('specificDays: $specificDays, ')
+          ..write('weeklyGoal: $weeklyGoal, ')
+          ..write('lifeAreaId: $lifeAreaId, ')
           ..write('createdAt: $createdAt, ')
           ..write('isSynced: $isSynced')
           ..write(')'))
@@ -519,13 +1101,30 @@ class Habit extends DataClass implements Insertable<Habit> {
   }
 
   @override
-  int get hashCode => Object.hash(id, name, createdAt, isSynced);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    startDate,
+    endDate,
+    frequencyType,
+    specificDays,
+    weeklyGoal,
+    lifeAreaId,
+    createdAt,
+    isSynced,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is Habit &&
           other.id == this.id &&
           other.name == this.name &&
+          other.startDate == this.startDate &&
+          other.endDate == this.endDate &&
+          other.frequencyType == this.frequencyType &&
+          other.specificDays == this.specificDays &&
+          other.weeklyGoal == this.weeklyGoal &&
+          other.lifeAreaId == this.lifeAreaId &&
           other.createdAt == this.createdAt &&
           other.isSynced == this.isSynced);
 }
@@ -533,12 +1132,24 @@ class Habit extends DataClass implements Insertable<Habit> {
 class HabitsCompanion extends UpdateCompanion<Habit> {
   final Value<String> id;
   final Value<String> name;
+  final Value<DateTime> startDate;
+  final Value<DateTime?> endDate;
+  final Value<String> frequencyType;
+  final Value<String?> specificDays;
+  final Value<int?> weeklyGoal;
+  final Value<String?> lifeAreaId;
   final Value<DateTime> createdAt;
   final Value<bool> isSynced;
   final Value<int> rowid;
   const HabitsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
+    this.startDate = const Value.absent(),
+    this.endDate = const Value.absent(),
+    this.frequencyType = const Value.absent(),
+    this.specificDays = const Value.absent(),
+    this.weeklyGoal = const Value.absent(),
+    this.lifeAreaId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.isSynced = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -546,6 +1157,12 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
   HabitsCompanion.insert({
     required String id,
     required String name,
+    this.startDate = const Value.absent(),
+    this.endDate = const Value.absent(),
+    this.frequencyType = const Value.absent(),
+    this.specificDays = const Value.absent(),
+    this.weeklyGoal = const Value.absent(),
+    this.lifeAreaId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.isSynced = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -554,6 +1171,12 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
   static Insertable<Habit> custom({
     Expression<String>? id,
     Expression<String>? name,
+    Expression<DateTime>? startDate,
+    Expression<DateTime>? endDate,
+    Expression<String>? frequencyType,
+    Expression<String>? specificDays,
+    Expression<int>? weeklyGoal,
+    Expression<String>? lifeAreaId,
     Expression<DateTime>? createdAt,
     Expression<bool>? isSynced,
     Expression<int>? rowid,
@@ -561,6 +1184,12 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     return RawValuesInsertable({
       if (id != null) 'id': id,
       if (name != null) 'name': name,
+      if (startDate != null) 'start_date': startDate,
+      if (endDate != null) 'end_date': endDate,
+      if (frequencyType != null) 'frequency_type': frequencyType,
+      if (specificDays != null) 'specific_days': specificDays,
+      if (weeklyGoal != null) 'weekly_goal': weeklyGoal,
+      if (lifeAreaId != null) 'life_area_id': lifeAreaId,
       if (createdAt != null) 'created_at': createdAt,
       if (isSynced != null) 'is_synced': isSynced,
       if (rowid != null) 'rowid': rowid,
@@ -570,6 +1199,12 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
   HabitsCompanion copyWith({
     Value<String>? id,
     Value<String>? name,
+    Value<DateTime>? startDate,
+    Value<DateTime?>? endDate,
+    Value<String>? frequencyType,
+    Value<String?>? specificDays,
+    Value<int?>? weeklyGoal,
+    Value<String?>? lifeAreaId,
     Value<DateTime>? createdAt,
     Value<bool>? isSynced,
     Value<int>? rowid,
@@ -577,6 +1212,12 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     return HabitsCompanion(
       id: id ?? this.id,
       name: name ?? this.name,
+      startDate: startDate ?? this.startDate,
+      endDate: endDate ?? this.endDate,
+      frequencyType: frequencyType ?? this.frequencyType,
+      specificDays: specificDays ?? this.specificDays,
+      weeklyGoal: weeklyGoal ?? this.weeklyGoal,
+      lifeAreaId: lifeAreaId ?? this.lifeAreaId,
       createdAt: createdAt ?? this.createdAt,
       isSynced: isSynced ?? this.isSynced,
       rowid: rowid ?? this.rowid,
@@ -591,6 +1232,24 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     }
     if (name.present) {
       map['name'] = Variable<String>(name.value);
+    }
+    if (startDate.present) {
+      map['start_date'] = Variable<DateTime>(startDate.value);
+    }
+    if (endDate.present) {
+      map['end_date'] = Variable<DateTime>(endDate.value);
+    }
+    if (frequencyType.present) {
+      map['frequency_type'] = Variable<String>(frequencyType.value);
+    }
+    if (specificDays.present) {
+      map['specific_days'] = Variable<String>(specificDays.value);
+    }
+    if (weeklyGoal.present) {
+      map['weekly_goal'] = Variable<int>(weeklyGoal.value);
+    }
+    if (lifeAreaId.present) {
+      map['life_area_id'] = Variable<String>(lifeAreaId.value);
     }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
@@ -609,6 +1268,12 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     return (StringBuffer('HabitsCompanion(')
           ..write('id: $id, ')
           ..write('name: $name, ')
+          ..write('startDate: $startDate, ')
+          ..write('endDate: $endDate, ')
+          ..write('frequencyType: $frequencyType, ')
+          ..write('specificDays: $specificDays, ')
+          ..write('weeklyGoal: $weeklyGoal, ')
+          ..write('lifeAreaId: $lifeAreaId, ')
           ..write('createdAt: $createdAt, ')
           ..write('isSynced: $isSynced, ')
           ..write('rowid: $rowid')
@@ -4113,6 +4778,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
   late final $NotesTable notes = $NotesTable(this);
+  late final $LifeAreasTable lifeAreas = $LifeAreasTable(this);
   late final $HabitsTable habits = $HabitsTable(this);
   late final $HabitLogsTable habitLogs = $HabitLogsTable(this);
   late final $WorkoutTemplatesTable workoutTemplates = $WorkoutTemplatesTable(
@@ -4133,6 +4799,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     notes,
+    lifeAreas,
     habits,
     habitLogs,
     workoutTemplates,
@@ -4320,10 +4987,210 @@ typedef $$NotesTableProcessedTableManager =
       Note,
       PrefetchHooks Function()
     >;
+typedef $$LifeAreasTableCreateCompanionBuilder =
+    LifeAreasCompanion Function({
+      required String id,
+      required String name,
+      Value<String?> icon,
+      Value<DateTime> createdAt,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+typedef $$LifeAreasTableUpdateCompanionBuilder =
+    LifeAreasCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String?> icon,
+      Value<DateTime> createdAt,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+
+class $$LifeAreasTableFilterComposer
+    extends Composer<_$AppDatabase, $LifeAreasTable> {
+  $$LifeAreasTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get icon => $composableBuilder(
+    column: $table.icon,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$LifeAreasTableOrderingComposer
+    extends Composer<_$AppDatabase, $LifeAreasTable> {
+  $$LifeAreasTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get icon => $composableBuilder(
+    column: $table.icon,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$LifeAreasTableAnnotationComposer
+    extends Composer<_$AppDatabase, $LifeAreasTable> {
+  $$LifeAreasTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get icon =>
+      $composableBuilder(column: $table.icon, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+}
+
+class $$LifeAreasTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $LifeAreasTable,
+          LifeArea,
+          $$LifeAreasTableFilterComposer,
+          $$LifeAreasTableOrderingComposer,
+          $$LifeAreasTableAnnotationComposer,
+          $$LifeAreasTableCreateCompanionBuilder,
+          $$LifeAreasTableUpdateCompanionBuilder,
+          (LifeArea, BaseReferences<_$AppDatabase, $LifeAreasTable, LifeArea>),
+          LifeArea,
+          PrefetchHooks Function()
+        > {
+  $$LifeAreasTableTableManager(_$AppDatabase db, $LifeAreasTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$LifeAreasTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$LifeAreasTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$LifeAreasTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String?> icon = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LifeAreasCompanion(
+                id: id,
+                name: name,
+                icon: icon,
+                createdAt: createdAt,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                Value<String?> icon = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => LifeAreasCompanion.insert(
+                id: id,
+                name: name,
+                icon: icon,
+                createdAt: createdAt,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$LifeAreasTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $LifeAreasTable,
+      LifeArea,
+      $$LifeAreasTableFilterComposer,
+      $$LifeAreasTableOrderingComposer,
+      $$LifeAreasTableAnnotationComposer,
+      $$LifeAreasTableCreateCompanionBuilder,
+      $$LifeAreasTableUpdateCompanionBuilder,
+      (LifeArea, BaseReferences<_$AppDatabase, $LifeAreasTable, LifeArea>),
+      LifeArea,
+      PrefetchHooks Function()
+    >;
 typedef $$HabitsTableCreateCompanionBuilder =
     HabitsCompanion Function({
       required String id,
       required String name,
+      Value<DateTime> startDate,
+      Value<DateTime?> endDate,
+      Value<String> frequencyType,
+      Value<String?> specificDays,
+      Value<int?> weeklyGoal,
+      Value<String?> lifeAreaId,
       Value<DateTime> createdAt,
       Value<bool> isSynced,
       Value<int> rowid,
@@ -4332,6 +5199,12 @@ typedef $$HabitsTableUpdateCompanionBuilder =
     HabitsCompanion Function({
       Value<String> id,
       Value<String> name,
+      Value<DateTime> startDate,
+      Value<DateTime?> endDate,
+      Value<String> frequencyType,
+      Value<String?> specificDays,
+      Value<int?> weeklyGoal,
+      Value<String?> lifeAreaId,
       Value<DateTime> createdAt,
       Value<bool> isSynced,
       Value<int> rowid,
@@ -4353,6 +5226,36 @@ class $$HabitsTableFilterComposer
 
   ColumnFilters<String> get name => $composableBuilder(
     column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get endDate => $composableBuilder(
+    column: $table.endDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get frequencyType => $composableBuilder(
+    column: $table.frequencyType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get specificDays => $composableBuilder(
+    column: $table.specificDays,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get weeklyGoal => $composableBuilder(
+    column: $table.weeklyGoal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lifeAreaId => $composableBuilder(
+    column: $table.lifeAreaId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4386,6 +5289,36 @@ class $$HabitsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<DateTime> get startDate => $composableBuilder(
+    column: $table.startDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get endDate => $composableBuilder(
+    column: $table.endDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get frequencyType => $composableBuilder(
+    column: $table.frequencyType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get specificDays => $composableBuilder(
+    column: $table.specificDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get weeklyGoal => $composableBuilder(
+    column: $table.weeklyGoal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lifeAreaId => $composableBuilder(
+    column: $table.lifeAreaId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -4411,6 +5344,32 @@ class $$HabitsTableAnnotationComposer
 
   GeneratedColumn<String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get startDate =>
+      $composableBuilder(column: $table.startDate, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get endDate =>
+      $composableBuilder(column: $table.endDate, builder: (column) => column);
+
+  GeneratedColumn<String> get frequencyType => $composableBuilder(
+    column: $table.frequencyType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get specificDays => $composableBuilder(
+    column: $table.specificDays,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get weeklyGoal => $composableBuilder(
+    column: $table.weeklyGoal,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lifeAreaId => $composableBuilder(
+    column: $table.lifeAreaId,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -4449,12 +5408,24 @@ class $$HabitsTableTableManager
               ({
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
+                Value<DateTime> startDate = const Value.absent(),
+                Value<DateTime?> endDate = const Value.absent(),
+                Value<String> frequencyType = const Value.absent(),
+                Value<String?> specificDays = const Value.absent(),
+                Value<int?> weeklyGoal = const Value.absent(),
+                Value<String?> lifeAreaId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => HabitsCompanion(
                 id: id,
                 name: name,
+                startDate: startDate,
+                endDate: endDate,
+                frequencyType: frequencyType,
+                specificDays: specificDays,
+                weeklyGoal: weeklyGoal,
+                lifeAreaId: lifeAreaId,
                 createdAt: createdAt,
                 isSynced: isSynced,
                 rowid: rowid,
@@ -4463,12 +5434,24 @@ class $$HabitsTableTableManager
               ({
                 required String id,
                 required String name,
+                Value<DateTime> startDate = const Value.absent(),
+                Value<DateTime?> endDate = const Value.absent(),
+                Value<String> frequencyType = const Value.absent(),
+                Value<String?> specificDays = const Value.absent(),
+                Value<int?> weeklyGoal = const Value.absent(),
+                Value<String?> lifeAreaId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => HabitsCompanion.insert(
                 id: id,
                 name: name,
+                startDate: startDate,
+                endDate: endDate,
+                frequencyType: frequencyType,
+                specificDays: specificDays,
+                weeklyGoal: weeklyGoal,
+                lifeAreaId: lifeAreaId,
                 createdAt: createdAt,
                 isSynced: isSynced,
                 rowid: rowid,
@@ -6416,6 +7399,8 @@ class $AppDatabaseManager {
   $AppDatabaseManager(this._db);
   $$NotesTableTableManager get notes =>
       $$NotesTableTableManager(_db, _db.notes);
+  $$LifeAreasTableTableManager get lifeAreas =>
+      $$LifeAreasTableTableManager(_db, _db.lifeAreas);
   $$HabitsTableTableManager get habits =>
       $$HabitsTableTableManager(_db, _db.habits);
   $$HabitLogsTableTableManager get habitLogs =>

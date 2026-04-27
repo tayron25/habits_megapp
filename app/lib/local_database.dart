@@ -18,10 +18,30 @@ class Notes extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+class LifeAreas extends Table {
+  TextColumn get id => text()();
+  TextColumn get name => text()();
+  TextColumn get icon => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
+  BoolColumn get isSynced => boolean().clientDefault(() => false)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 // --- TABLAS DEL SPRINT 2 (Hábitos) ---
 class Habits extends Table {
   TextColumn get id => text()();
   TextColumn get name => text()();
+  
+  // Nuevas columnas V2
+  DateTimeColumn get startDate => dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get endDate => dateTime().nullable()();
+  TextColumn get frequencyType => text().withDefault(const Constant('daily'))(); // 'daily', 'specific_days', 'weekly_goal'
+  TextColumn get specificDays => text().nullable()(); // '1,2,3'
+  IntColumn get weeklyGoal => integer().nullable()();
+  TextColumn get lifeAreaId => text().nullable()();
+
   DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
   BoolColumn get isSynced => boolean().clientDefault(() => false)();
 
@@ -141,6 +161,7 @@ class MilestoneTasks extends Table {
 // --- CONFIGURACIÓN DE LA BASE DE DATOS ---
 @DriftDatabase(tables: [
   Notes,
+  LifeAreas,
   Habits,
   HabitLogs,
   WorkoutTemplates,
@@ -156,7 +177,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration {
@@ -184,6 +205,16 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(roadmaps);
           await m.createTable(roadmapMilestones);
           await m.createTable(milestoneTasks);
+        }
+        // Migración para la Versión 6 (Life Areas y Habits V2)
+        if (from < 6) {
+          await m.createTable(lifeAreas);
+          await m.addColumn(habits, habits.startDate);
+          await m.addColumn(habits, habits.endDate);
+          await m.addColumn(habits, habits.frequencyType);
+          await m.addColumn(habits, habits.specificDays);
+          await m.addColumn(habits, habits.weeklyGoal);
+          await m.addColumn(habits, habits.lifeAreaId);
         }
       },
       beforeOpen: (details) async {
