@@ -7,6 +7,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:app/widgets/create_habit_modal.dart';
 import 'package:app/widgets/create_template_modal.dart';
 import 'package:app/gym_provider.dart';
+import 'package:app/workout_session_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -287,9 +288,18 @@ class MyHomePage extends ConsumerWidget {
                                             width: double.infinity,
                                             height: 36,
                                             child: FilledButton.icon(
+                                              // En el botón "Entrenar" de la sección Gimnasio en main.dart:
                                               onPressed: () {
-                                                // Aquí abriremos la pantalla de entrenamiento activo
-                                                print('Iniciar: ${item.template.name}');
+                                                Navigator.push(
+                                                  context,
+                                                  MaterialPageRoute(
+                                                    builder: (context) => WorkoutSessionScreen(
+                                                      templateId: item.template.id,
+                                                      templateName: item.template.name,
+                                                      exercises: item.exercises.map((e) => e.exerciseName).toList(),
+                                                    ),
+                                                  ),
+                                                );
                                               },
                                               icon: const Icon(Icons.play_arrow, size: 18),
                                               label: const Text('Entrenar', style: TextStyle(fontWeight: FontWeight.bold)),
