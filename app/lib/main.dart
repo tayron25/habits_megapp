@@ -10,6 +10,9 @@ import 'package:app/gym_provider.dart';
 import 'package:app/workout_session_screen.dart';
 import 'package:app/widgets/create_task_modal.dart';
 import 'package:app/tasks_provider.dart';
+import 'package:app/roadmaps_provider.dart';
+import 'package:app/widgets/create_roadmap_modal.dart';
+import 'package:app/roadmap_detail_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -367,6 +370,111 @@ class MyHomePage extends ConsumerWidget {
             ),
           ),
           // --- FIN SECCIÓN GIMNASIO ---
+          // --- SECCIÓN ROADMAPS (METAS A LARGO PLAZO) ---
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Roadmaps',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Consumer(
+                  builder: (context, ref, child) {
+                    final roadmapsAsync = ref.watch(roadmapsProvider);
+
+                    return roadmapsAsync.when(
+                      loading: () => const Center(child: CircularProgressIndicator()),
+                      error: (err, stack) => Center(child: Text('Error: $err', style: const TextStyle(color: Colors.grey))),
+                      data: (roadmapsList) {
+                        if (roadmapsList.isEmpty) {
+                          return Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF171717),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(color: const Color(0xFF262626)),
+                            ),
+                            child: const Text(
+                              'Aún no has definido metas a largo plazo.\n¡Crea tu primer Roadmap!',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(color: Colors.grey, fontSize: 15),
+                            ),
+                          );
+                        }
+
+                        return ListView.builder(
+                          shrinkWrap: true,
+                          physics: const NeverScrollableScrollPhysics(),
+                          itemCount: roadmapsList.length,
+                          itemBuilder: (context, index) {
+                            final roadmapItem = roadmapsList[index];
+                            final roadmap = roadmapItem.roadmap;
+                            final progress = roadmapItem.progress;
+
+                            return GestureDetector(
+                              onTap: () {
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) => RoadmapDetailScreen(roadmapId: roadmap.id),
+                                  ),
+                                );
+                              },
+                              child: Container(
+                                margin: const EdgeInsets.only(bottom: 8),
+                                padding: const EdgeInsets.all(16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF1A1A1A),
+                                  borderRadius: BorderRadius.circular(14),
+                                  border: Border.all(color: const Color(0xFF2A2A2A)),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Expanded(
+                                          child: Text(
+                                            roadmap.title,
+                                            style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+                                          ),
+                                        ),
+                                        Text(
+                                          '${(progress * 100).toStringAsFixed(0)}%',
+                                          style: TextStyle(color: Theme.of(context).colorScheme.primary, fontWeight: FontWeight.bold),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    LinearProgressIndicator(
+                                      value: progress,
+                                      backgroundColor: const Color(0xFF2A2A2A),
+                                      color: Theme.of(context).colorScheme.primary,
+                                      borderRadius: BorderRadius.circular(4),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          // --- FIN SECCIÓN ROADMAPS ---
           // --- SECCIÓN TAREAS PENDIENTES ---
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
@@ -678,6 +786,22 @@ class MyHomePage extends ConsumerWidget {
                         isScrollControlled: true,
                         backgroundColor: Colors.transparent,
                         builder: (context) => const CreateTaskModal(),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.map,
+                      color: Colors.orangeAccent,
+                    ),
+                    title: const Text('Nuevo Roadmap'),
+                    onTap: () {
+                      Navigator.pop(context);
+                      showModalBottomSheet(
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => const CreateRoadmapModal(),
                       );
                     },
                   ),

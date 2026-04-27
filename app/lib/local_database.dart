@@ -103,6 +103,41 @@ class Tasks extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+// --- TABLAS DEL SPRINT 5 (Roadmaps) ---
+class Roadmaps extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  TextColumn get description => text().nullable()();
+  DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
+  BoolColumn get isSynced => boolean().clientDefault(() => false)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class RoadmapMilestones extends Table {
+  TextColumn get id => text()();
+  TextColumn get roadmapId => text()();
+  TextColumn get title => text()();
+  DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
+  BoolColumn get isSynced => boolean().clientDefault(() => false)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+class MilestoneTasks extends Table {
+  TextColumn get id => text()();
+  TextColumn get milestoneId => text()();
+  TextColumn get title => text()();
+  BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
+  BoolColumn get isSynced => boolean().clientDefault(() => false)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 // --- CONFIGURACIÓN DE LA BASE DE DATOS ---
 @DriftDatabase(tables: [
   Notes,
@@ -112,13 +147,16 @@ class Tasks extends Table {
   TemplateExercises,
   WorkoutLogs,
   WorkoutSets,
-  Tasks // <-- Nueva tabla
+  Tasks,
+  Roadmaps,
+  RoadmapMilestones,
+  MilestoneTasks
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 4; // <-- Sube a 4
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration {
@@ -140,6 +178,12 @@ class AppDatabase extends _$AppDatabase {
         // Migración para la Versión 4 (Tareas)
         if (from < 4) {
           await m.createTable(tasks);
+        }
+        // Migración para la Versión 5 (Roadmaps)
+        if (from < 5) {
+          await m.createTable(roadmaps);
+          await m.createTable(roadmapMilestones);
+          await m.createTable(milestoneTasks);
         }
       },
       beforeOpen: (details) async {
