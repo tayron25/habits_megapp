@@ -1,22 +1,22 @@
+import 'package:app/habits_provider.dart';
+import 'package:app/notes_provider.dart';
+import 'package:app/widgets/quick_capture_modal.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-// Asegúrate de que esta ruta coincida con el nombre real de tu proyecto y carpeta
-import 'widgets/quick_capture_modal.dart'; 
-import 'notes_provider.dart'; // Ajusta la ruta si es necesario
+import 'package:app/widgets/create_habit_modal.dart';
+import 'package:app/widgets/create_template_modal.dart';
+import 'package:app/gym_provider.dart';
 
 void main() async {
-  // 1. Asegurar que los bindings nativos estén listos antes de inicializar bases de datos
   WidgetsFlutterBinding.ensureInitialized();
 
-  // 2. Inicializar Supabase (Reemplaza con tus URLs temporales si ya creaste el proyecto, 
-  // o déjalo con strings vacíos solo para que no crashee por ahora).
   await Supabase.initialize(
     url: 'https://tazkviborrgtmaggowmk.supabase.co',
-    anonKey: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhemt2aWJvcnJndG1hZ2dvd21rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNDIzNDIsImV4cCI6MjA5MjgxODM0Mn0.VY5lKytV-hLy3BAFKZeyJsZriqQmjFHKqZ0SMuTb83A',
+    anonKey:
+        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRhemt2aWJvcnJndG1hZ2dvd21rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzcyNDIzNDIsImV4cCI6MjA5MjgxODM0Mn0.VY5lKytV-hLy3BAFKZeyJsZriqQmjFHKqZ0SMuTb83A',
   );
 
-  // 3. Envolver la app en ProviderScope (OBLIGATORIO para que Riverpod funcione)
   runApp(const ProviderScope(child: MyApp()));
 }
 
@@ -27,10 +27,10 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Life OS',
-      // Cambiamos a modo oscuro por defecto como definimos en el diseño
       theme: ThemeData(
         brightness: Brightness.dark,
         colorSchemeSeed: Colors.deepPurple,
+        scaffoldBackgroundColor: const Color(0xFF0E0E0E),
         useMaterial3: true,
       ),
       home: const MyHomePage(),
@@ -38,90 +38,415 @@ class MyApp extends StatelessWidget {
   }
 }
 
-// Asegúrate de tener estas importaciones arriba:
-
-
 class MyHomePage extends ConsumerWidget {
   const MyHomePage({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // Escuchamos el estado de las notas
     final notesAsync = ref.watch(notesProvider);
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Hoy'),
         elevation: 0,
+        backgroundColor: const Color(0xFF0E0E0E),
       ),
-      body: notesAsync.when(
-        // ESTADO 1: Cargando datos
-        loading: () => const Center(child: CircularProgressIndicator()),
-        
-        // ESTADO 2: Error al cargar
-        error: (error, stack) => Center(child: Text('Error: $error')),
-        
-        // ESTADO 3: Datos cargados correctamente
-        data: (notes) {
-          if (notes.isEmpty) {
-            return const Center(
-              child: Text(
-                'Tu mente está en blanco.\n¡Anota algo!',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey, fontSize: 16),
-              ),
-            );
-          }
-
-          // Lista de notas
-          return ListView.builder(
-            padding: const EdgeInsets.all(16),
-            itemCount: notes.length,
-            itemBuilder: (context, index) {
-              final note = notes[index];
-              return Card(
-                color: const Color(0xFF1A1A1A),
-                margin: const EdgeInsets.only(bottom: 12),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
-                  side: const BorderSide(color: Color(0xFF2A2A2A)),
-                ),
-                child: Padding(
-                  padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Text(
-                          note.content,
-                          style: const TextStyle(fontSize: 16),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      // Indicador visual de sincronización (Nube)
-                      Icon(
-                        note.isSynced ? Icons.cloud_done : Icons.cloud_off,
-                        color: note.isSynced ? Colors.green : Colors.grey,
-                        size: 20,
-                      ),
-                    ],
+      body: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Hábitos',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
                   ),
                 ),
-              );
-            },
-          );
-        },
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 182,
+                  child: Consumer(
+                    builder: (context, ref, child) {
+                      final habitsAsync = ref.watch(habitsProvider);
+
+                      return habitsAsync.when(
+                        loading: () => const Center(
+                          child: CircularProgressIndicator(),
+                        ),
+                        error: (error, stack) => Center(
+                          child: Text(
+                            'Error: $error',
+                            style: const TextStyle(color: Colors.grey),
+                          ),
+                        ),
+                        data: (habits) {
+                          if (habits.isEmpty) {
+                            return const Center(
+                              child: Text(
+                                'Aún no tienes hábitos.\nCrea uno para empezar.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 15,
+                                ),
+                              ),
+                            );
+                          }
+
+                          return ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: habits.length,
+                            itemBuilder: (context, index) {
+                              final habitWithStatus = habits[index];
+
+                              return SizedBox(
+                                width: 200,
+                                child: Padding(
+                                  padding: EdgeInsets.only(
+                                    right: index == habits.length - 1 ? 0 : 12,
+                                  ),
+                                  child: Card(
+                                    color: const Color(0xFF171717),
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(18),
+                                      side: const BorderSide(
+                                        color: Color(0xFF262626),
+                                      ),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
+                                        children: [
+                                          Expanded(
+                                            child: Align(
+                                              alignment: Alignment.topLeft,
+                                              child: Text(
+                                                habitWithStatus.habit.name,
+                                                maxLines: 3,
+                                                overflow: TextOverflow.ellipsis,
+                                                style: const TextStyle(
+                                                  fontSize: 17,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.white,
+                                                ),
+                                              ),
+                                            ),
+                                          ),
+                                          const SizedBox(height: 12),
+                                          Row(
+                                            mainAxisAlignment:
+                                                MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              const Text(
+                                                'Hoy',
+                                                style: TextStyle(
+                                                  color: Color(0xFF9A9A9A),
+                                                  fontSize: 13,
+                                                ),
+                                              ),
+                                              Transform.scale(
+                                                scale: 1.35,
+                                                child: Checkbox(
+                                                  value: habitWithStatus
+                                                      .isCompletedToday,
+                                                  onChanged: (value) {
+                                                    ref
+                                                        .read(
+                                                          habitsProvider
+                                                              .notifier,
+                                                        )
+                                                        .toggleHabit(
+                                                          habitWithStatus
+                                                              .habit.id,
+                                                          value ?? false,
+                                                        );
+                                                  },
+                                                  activeColor:
+                                                      Theme.of(context)
+                                                          .colorScheme
+                                                          .primary,
+                                                  checkColor: Colors.black,
+                                                  side: const BorderSide(
+                                                    color: Color(0xFF4A4A4A),
+                                                  ),
+                                                  shape: RoundedRectangleBorder(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                      4,
+                                                    ),
+                                                  ),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // --- SECCIÓN GIMNASIO ---
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Tus Rutinas',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                SizedBox(
+                  height: 140, // Un poco más bajo que los hábitos
+                  child: Consumer(
+                    builder: (context, ref, child) {
+                      final templatesAsync = ref.watch(gymTemplatesProvider);
+
+                      return templatesAsync.when(
+                        loading: () => const Center(child: CircularProgressIndicator()),
+                        error: (error, stack) => Center(
+                          child: Text('Error: $error', style: const TextStyle(color: Colors.grey)),
+                        ),
+                        data: (templatesList) {
+                          if (templatesList.isEmpty) {
+                            return const Center(
+                              child: Text(
+                                'Aún no tienes rutinas.\nCrea una desde el botón +.',
+                                textAlign: TextAlign.center,
+                                style: TextStyle(color: Colors.grey, fontSize: 15),
+                              ),
+                            );
+                          }
+
+                          return ListView.builder(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: templatesList.length,
+                            itemBuilder: (context, index) {
+                              final item = templatesList[index];
+                              
+                              return SizedBox(
+                                width: 220,
+                                child: Padding(
+                                  padding: EdgeInsets.only(
+                                    right: index == templatesList.length - 1 ? 0 : 12,
+                                  ),
+                                  child: Card(
+                                    color: const Color(0xFF171717),
+                                    elevation: 0,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(18),
+                                      side: const BorderSide(color: Color(0xFF262626)),
+                                    ),
+                                    child: Padding(
+                                      padding: const EdgeInsets.all(16),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            item.template.name,
+                                            maxLines: 2,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: const TextStyle(
+                                              fontSize: 17,
+                                              fontWeight: FontWeight.w600,
+                                              color: Colors.white,
+                                            ),
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Text(
+                                            '${item.exercises.length} ejercicios',
+                                            style: const TextStyle(
+                                              color: Color(0xFF9A9A9A),
+                                              fontSize: 13,
+                                            ),
+                                          ),
+                                          const Spacer(),
+                                          // Botón para iniciar el entrenamiento
+                                          SizedBox(
+                                            width: double.infinity,
+                                            height: 36,
+                                            child: FilledButton.icon(
+                                              onPressed: () {
+                                                // Aquí abriremos la pantalla de entrenamiento activo
+                                                print('Iniciar: ${item.template.name}');
+                                              },
+                                              icon: const Icon(Icons.play_arrow, size: 18),
+                                              label: const Text('Entrenar', style: TextStyle(fontWeight: FontWeight.bold)),
+                                              style: FilledButton.styleFrom(
+                                                backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
+                                                foregroundColor: Theme.of(context).colorScheme.primary,
+                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              );
+                            },
+                          );
+                        },
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // --- FIN SECCIÓN GIMNASIO ---
+          Expanded(
+            child: notesAsync.when(
+              loading: () => const Center(child: CircularProgressIndicator()),
+              error: (error, stack) => Center(
+                child: Text(
+                  'Error: $error',
+                  style: const TextStyle(color: Colors.grey),
+                ),
+              ),
+              data: (notes) {
+                if (notes.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'Tu mente está en blanco.\n¡Anota algo!',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(color: Colors.grey, fontSize: 16),
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
+                  itemCount: notes.length,
+                  itemBuilder: (context, index) {
+                    final note = notes[index];
+                    return Card(
+                      color: const Color(0xFF1A1A1A),
+                      margin: const EdgeInsets.only(bottom: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        side: const BorderSide(color: Color(0xFF2A2A2A)),
+                      ),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              child: Text(
+                                note.content,
+                                style: const TextStyle(fontSize: 16),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Icon(
+                              note.isSynced
+                                  ? Icons.cloud_done
+                                  : Icons.cloud_off,
+                              color:
+                                  note.isSynced ? Colors.green : Colors.grey,
+                              size: 20,
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          // Primero mostramos un menú para elegir qué crear
           showModalBottomSheet(
             context: context,
-            isScrollControlled: true,
-            backgroundColor: Colors.transparent,
-            builder: (context) => const QuickCaptureModal(),
+            backgroundColor: const Color(0xFF1A1A1A),
+            shape: const RoundedRectangleBorder(
+              borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+            ),
+            builder: (context) => SafeArea(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const SizedBox(height: 12),
+                  Container(
+                    width: 40, height: 4,
+                    decoration: BoxDecoration(
+                      color: Colors.grey.shade800,
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    leading: const Icon(Icons.flash_on, color: Colors.amber),
+                    title: const Text('Captura Rápida (Nota)'),
+                    onTap: () {
+                      Navigator.pop(context); // Cierra el menú
+                      showModalBottomSheet(    // Abre el modal de nota
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => const QuickCaptureModal(),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.repeat, color: Colors.greenAccent),
+                    title: const Text('Nuevo Hábito'),
+                    onTap: () {
+                      Navigator.pop(context); // Cierra el menú
+                      showModalBottomSheet(    // Abre el modal de hábito
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => const CreateHabitModal(),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(Icons.fitness_center, color: Colors.blueAccent),
+                    title: const Text('Nueva Rutina de Gym'),
+                    onTap: () {
+                      Navigator.pop(context); // Cierra el menú
+                      showModalBottomSheet(    // Abre el modal de la rutina
+                        context: context,
+                        isScrollControlled: true, // ¡CRÍTICO para que tome el alto que definimos!
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => const CreateTemplateModal(),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 16),
+                ],
+              ),
+            ),
           );
         },
-        tooltip: 'Nueva Nota',
         child: const Icon(Icons.add),
       ),
     );
