@@ -37,9 +37,17 @@ class Habits extends Table {
   // Nuevas columnas V2
   DateTimeColumn get startDate => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get endDate => dateTime().nullable()();
-  TextColumn get frequencyType => text().withDefault(const Constant('daily'))(); // 'daily', 'specific_days', 'weekly_goal'
-  TextColumn get specificDays => text().nullable()(); // '1,2,3'
+  // Columnas antiguas V2 (mantener para no romper migraciones)
+  TextColumn get frequencyType => text().withDefault(const Constant('daily'))();
   IntColumn get weeklyGoal => integer().nullable()();
+
+  // Nuevas columnas V3 (UI)
+  TextColumn get repeatMode => text().withDefault(const Constant('daily'))(); // 'daily', 'monthly', 'interval'
+  TextColumn get specificDays => text().nullable()(); // '1,2,3'
+  IntColumn get goalAmount => integer().withDefault(const Constant(1))();
+  TextColumn get goalPeriod => text().withDefault(const Constant('day'))(); // 'day', 'week', 'month', 'year'
+  TextColumn get timeOfDay => text().nullable()(); // 'Evening' etc.
+
   TextColumn get lifeAreaId => text().nullable()();
 
   DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
@@ -177,7 +185,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration {
@@ -215,6 +223,13 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(habits, habits.specificDays);
           await m.addColumn(habits, habits.weeklyGoal);
           await m.addColumn(habits, habits.lifeAreaId);
+        }
+        // Migración para la Versión 7 (Habits UI)
+        if (from < 7) {
+          await m.addColumn(habits, habits.repeatMode);
+          await m.addColumn(habits, habits.goalAmount);
+          await m.addColumn(habits, habits.goalPeriod);
+          await m.addColumn(habits, habits.timeOfDay);
         }
       },
       beforeOpen: (details) async {

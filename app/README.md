@@ -33,11 +33,11 @@ La UI lee de la base de datos local usando Streams (`ref.watch`). Al crear/edita
 
 ## 🏗️ Estado Actual del Desarrollo
 
-El esquema actual de base de datos local (Drift) está en la **versión 6 (v6)** con 12 tablas operativas en el ecosistema:
+El esquema actual de base de datos local (Drift) está en la **versión 7 (v7)** con 12 tablas operativas en el ecosistema:
 
 - **Módulo Áreas de Vida:** Tabla `LifeAreas` (`id`, `name`, `icon`, `createdAt`, `isSynced`).
 - **Módulo Notas (Quick Captures):** Tabla `Notes` (`id`, `content`, `createdAt`, `isSynced`).
-- **Módulo Hábitos (V2):** Tablas `Habits` (avanzada con `startDate`, `endDate`, `frequencyType`, `weeklyGoal`, `lifeAreaId`) y `HabitLogs` (registro diario).
+- **Módulo Hábitos (V3):** Tablas `Habits` (avanzada con `startDate`, `endDate`, `repeatMode`, `goalAmount`, `goalPeriod`, `timeOfDay`, `lifeAreaId`) y `HabitLogs` (registro diario).
 - **Módulo Gimnasio:** Tablas `WorkoutTemplates` (plantillas), `TemplateExercises` (ejercicios), `WorkoutLogs` (sesión activa), y `WorkoutSets` (series/repeticiones).
 - **Módulo Tareas (To-Do):** Tabla `Tasks` (`title`, `description`, `priority`, `dueDate`, `isCompleted`).
 - **Módulo Roadmaps (Metas Largo Plazo):** Tablas `Roadmaps` (meta global), `RoadmapMilestones` (hitos) y `MilestoneTasks` (checklist de hitos).
@@ -48,10 +48,10 @@ La interfaz gráfica principal (`main.dart` - Pantalla Hoy) está estructurada d
 
 ## 🎯 Módulos Implementados
 
-### 1. Hábitos Avanzados (V2)
+### 1. Hábitos Avanzados (V3)
 Sistema dinámico para construir consistencia.
 - Fechas de vigencia (Inicio / Fin opcional).
-- Frecuencia personalizable (diaria, días específicos de la semana o meta semanal).
+- Frecuencia personalizable (Diario, Mensual, Intervalos) con metas dinámicas (veces por día, semana, mes, año).
 - Asociados fuertemente a las "Áreas de Vida".
 - Filtrado inteligente reactivo.
 
@@ -77,7 +77,7 @@ Gestor de proyectos macro.
 
 ## 📊 Módulo Analítico (El Core - Pendiente)
 
-Toda la data generada hasta ahora (`v6`) está preparada para alimentar el módulo de Inteligencia de Negocios Personal mediante cruces de información:
+Toda la data generada hasta ahora (`v7`) está preparada para alimentar el módulo de Inteligencia de Negocios Personal mediante cruces de información:
 - Gráficos históricos de cumplimiento de hábitos.
 - Progresión de cargas en gimnasio a lo largo del tiempo.
 - Distribución de tiempo/esfuerzo en las nuevas "Áreas de Vida" (cruzando Hábitos, Tareas y Roadmaps).

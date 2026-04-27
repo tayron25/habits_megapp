@@ -136,10 +136,11 @@ class MyHomePage extends ConsumerWidget {
                                                 habitWithStatus.habit.name,
                                                 maxLines: 3,
                                                 overflow: TextOverflow.ellipsis,
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontSize: 17,
                                                   fontWeight: FontWeight.w600,
-                                                  color: Colors.white,
+                                                  color: habitWithStatus.isCompletedToday ? Colors.white38 : Colors.white,
+                                                  decoration: habitWithStatus.isCompletedToday ? TextDecoration.lineThrough : null,
                                                 ),
                                               ),
                                             ),

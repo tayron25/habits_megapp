@@ -13,19 +13,22 @@ class CreateHabitModal extends ConsumerStatefulWidget {
 
 class _CreateHabitModalState extends ConsumerState<CreateHabitModal> {
   final _nameController = TextEditingController();
-  final _weeklyGoalController = TextEditingController(text: '3');
+  final _goalAmountController = TextEditingController(text: '2');
+  final _intervalController = TextEditingController(text: '2');
   
   String? _selectedLifeAreaId;
   DateTime _startDate = DateTime.now();
   DateTime? _endDate;
   
-  String _frequencyType = 'daily'; // 'daily', 'specific_days', 'weekly_goal'
-  final Set<int> _selectedDays = {}; // 1=Mon .. 7=Sun
+  String _repeatMode = 'daily'; // 'daily', 'monthly', 'interval'
+  final Set<int> _selectedDays = {}; // 1=Mon .. 7=Sun (daily) or 1..31 (monthly)
+  String _goalPeriod = 'week'; // 'day', 'week', 'month', 'year'
 
   @override
   void dispose() {
     _nameController.dispose();
-    _weeklyGoalController.dispose();
+    _goalAmountController.dispose();
+    _intervalController.dispose();
     super.dispose();
   }
 
@@ -33,25 +36,28 @@ class _CreateHabitModalState extends ConsumerState<CreateHabitModal> {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
 
-    int? weeklyGoal;
-    if (_frequencyType == 'weekly_goal') {
-      weeklyGoal = int.tryParse(_weeklyGoalController.text.trim());
-      if (weeklyGoal == null || weeklyGoal <= 0) return;
-    }
+    final goalAmount = int.tryParse(_goalAmountController.text.trim()) ?? 1;
+    if (goalAmount <= 0) return;
 
     String? specificDaysStr;
-    if (_frequencyType == 'specific_days') {
-      if (_selectedDays.isEmpty) return; // Deben seleccionar al menos un día
+    if (_repeatMode == 'daily' && _selectedDays.isNotEmpty && _selectedDays.length < 7) {
       specificDaysStr = _selectedDays.toList().join(',');
+    } else if (_repeatMode == 'monthly' && _selectedDays.isNotEmpty) {
+      specificDaysStr = _selectedDays.toList().join(',');
+    } else if (_repeatMode == 'interval') {
+      final interval = int.tryParse(_intervalController.text.trim()) ?? 2;
+      specificDaysStr = interval.toString();
     }
 
     ref.read(habitsProvider.notifier).addHabit(
           name: name,
           startDate: _startDate,
           endDate: _endDate,
-          frequencyType: _frequencyType,
+          repeatMode: _repeatMode,
           specificDays: specificDaysStr,
-          weeklyGoal: weeklyGoal,
+          goalAmount: goalAmount,
+          goalPeriod: _goalPeriod,
+          timeOfDay: null,
           lifeAreaId: _selectedLifeAreaId,
         );
     
@@ -183,40 +189,11 @@ class _CreateHabitModalState extends ConsumerState<CreateHabitModal> {
                 ),
                 const SizedBox(height: 8),
 
-                // 4. Frecuencia
-                const Text('Frecuencia:', style: TextStyle(color: Colors.grey)),
+                // 4. Repeat & Goal
                 const SizedBox(height: 8),
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(value: 'daily', label: Text('Diario')),
-                    ButtonSegment(value: 'specific_days', label: Text('Días')),
-                    ButtonSegment(value: 'weekly_goal', label: Text('X / Sem')),
-                  ],
-                  selected: {_frequencyType},
-                  onSelectionChanged: (set) => setState(() => _frequencyType = set.first),
-                  style: SegmentedButton.styleFrom(
-                    backgroundColor: const Color(0xFF1A1A1A),
-                  ),
-                ),
-                const SizedBox(height: 12),
-
-                if (_frequencyType == 'specific_days')
-                  Wrap(
-                    spacing: 4,
-                    children: [
-                      _buildDayChip(1, 'L'), _buildDayChip(2, 'M'), _buildDayChip(3, 'X'),
-                      _buildDayChip(4, 'J'), _buildDayChip(5, 'V'), _buildDayChip(6, 'S'), _buildDayChip(7, 'D'),
-                    ],
-                  ),
-                
-                if (_frequencyType == 'weekly_goal')
-                   TextField(
-                    controller: _weeklyGoalController,
-                    keyboardType: TextInputType.number,
-                    style: const TextStyle(color: Colors.white),
-                    decoration: _inputDecoration('Veces por semana', colors.primary),
-                  ),
-
+                _buildRepeatRow(),
+                const Divider(color: Color(0xFF2A2A2A), height: 32),
+                _buildGoalRow(),
                 const SizedBox(height: 24),
 
                 SizedBox(
@@ -239,17 +216,254 @@ class _CreateHabitModalState extends ConsumerState<CreateHabitModal> {
     );
   }
 
-  Widget _buildDayChip(int day, String label) {
-    final isSelected = _selectedDays.contains(day);
-    return FilterChip(
-      label: Text(label),
-      selected: isSelected,
-      onSelected: (val) {
-        setState(() {
-          if (val) _selectedDays.add(day);
-          else _selectedDays.remove(day);
-        });
-      },
+  Widget _buildRepeatRow() {
+    final isEveryDay = _selectedDays.isEmpty || _selectedDays.length == 7;
+    final everyDayText = isEveryDay ? 'Every Day' : '${_selectedDays.length} days';
+
+    return Row(
+      children: [
+        const Icon(Icons.repeat, color: Colors.white, size: 20),
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Text('Repeat', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
+        ),
+        _buildDropdown(
+          value: _repeatMode,
+          items: const [
+            DropdownMenuItem(value: 'daily', child: Text('Daily')),
+            DropdownMenuItem(value: 'monthly', child: Text('Monthly')),
+            DropdownMenuItem(value: 'interval', child: Text('Interval')),
+          ],
+          onChanged: (val) {
+            setState(() {
+              _repeatMode = val!;
+              _selectedDays.clear();
+            });
+          },
+        ),
+        const SizedBox(width: 8),
+        if (_repeatMode == 'daily')
+          PopupMenuButton<int>(
+            color: const Color(0xFF2A2A2A),
+            offset: const Offset(0, 40),
+            onSelected: (val) {
+              if (val == 0) {
+                setState(() => _selectedDays.clear());
+              } else {
+                setState(() {
+                  if (_selectedDays.contains(val)) {
+                    _selectedDays.remove(val);
+                  } else {
+                    _selectedDays.add(val);
+                  }
+                });
+              }
+            },
+            itemBuilder: (context) => [
+              _buildCheckableMenuItem(0, 'Every Day', isEveryDay),
+              const PopupMenuDivider(),
+              _buildCheckableMenuItem(7, 'Sunday', _selectedDays.contains(7)),
+              _buildCheckableMenuItem(1, 'Monday', _selectedDays.contains(1)),
+              _buildCheckableMenuItem(2, 'Tuesday', _selectedDays.contains(2)),
+              _buildCheckableMenuItem(3, 'Wednesday', _selectedDays.contains(3)),
+              _buildCheckableMenuItem(4, 'Thursday', _selectedDays.contains(4)),
+              _buildCheckableMenuItem(5, 'Friday', _selectedDays.contains(5)),
+              _buildCheckableMenuItem(6, 'Saturday', _selectedDays.contains(6)),
+            ],
+            child: _buildDropdownContainer(everyDayText),
+          )
+        else if (_repeatMode == 'monthly')
+          GestureDetector(
+            onTap: _showMonthlyDaysDialog,
+            child: _buildDropdownContainer(
+              _selectedDays.isEmpty ? 'Select days' : '${_selectedDays.length} days'
+            ),
+          )
+        else if (_repeatMode == 'interval')
+          Row(
+            children: [
+              const Text('every', style: TextStyle(color: Colors.white70)),
+              const SizedBox(width: 8),
+              SizedBox(
+                width: 40,
+                height: 40,
+                child: TextField(
+                  controller: _intervalController,
+                  keyboardType: TextInputType.number,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
+                    filled: true,
+                    fillColor: const Color(0xFF1A1A1A),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF3A3A3A))),
+                    enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF3A3A3A))),
+                    focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.blueAccent)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              const Text('days', style: TextStyle(color: Colors.white70)),
+            ],
+          ),
+      ],
+    );
+  }
+
+  Future<void> _showMonthlyDaysDialog() async {
+    await showDialog(
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (context, setStateDialog) {
+            return AlertDialog(
+              backgroundColor: const Color(0xFF121212),
+              surfaceTintColor: Colors.transparent,
+              title: const Text('Days of the Month', style: TextStyle(color: Colors.white, fontSize: 18)),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: List.generate(31, (index) {
+                    final day = index + 1;
+                    final isSelected = _selectedDays.contains(day);
+                    return InkWell(
+                      onTap: () {
+                        setStateDialog(() {
+                          if (isSelected) _selectedDays.remove(day);
+                          else _selectedDays.add(day);
+                        });
+                        setState(() {});
+                      },
+                      child: Container(
+                        width: 40,
+                        height: 40,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          color: isSelected ? Colors.blueAccent : const Color(0xFF1A1A1A),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: isSelected ? Colors.blueAccent : const Color(0xFF3A3A3A)),
+                        ),
+                        child: Text('$day', style: TextStyle(color: isSelected ? Colors.white : Colors.white70, fontWeight: isSelected ? FontWeight.bold : FontWeight.normal)),
+                      ),
+                    );
+                  }),
+                ),
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Done'),
+                ),
+              ],
+            );
+          }
+        );
+      }
+    );
+  }
+
+  PopupMenuItem<int> _buildCheckableMenuItem(int value, String text, bool isChecked) {
+    return PopupMenuItem<int>(
+      value: value,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(text, style: const TextStyle(color: Colors.white)),
+          if (isChecked) const Icon(Icons.check_box, color: Colors.blueAccent, size: 20)
+          else const Icon(Icons.check_box_outline_blank, color: Colors.grey, size: 20),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildGoalRow() {
+    return Row(
+      children: [
+        const Icon(Icons.track_changes, color: Colors.white, size: 20),
+        const SizedBox(width: 12),
+        const Expanded(
+          child: Text('Goal', style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w500)),
+        ),
+        SizedBox(
+          width: 50,
+          height: 40,
+          child: TextField(
+            controller: _goalAmountController,
+            keyboardType: TextInputType.number,
+            textAlign: TextAlign.center,
+            style: const TextStyle(color: Colors.white, fontSize: 14),
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 8),
+              filled: true,
+              fillColor: const Color(0xFF1A1A1A),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF3A3A3A))),
+              enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Color(0xFF3A3A3A))),
+              focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(8), borderSide: const BorderSide(color: Colors.blueAccent)),
+            ),
+          ),
+        ),
+        const SizedBox(width: 8),
+        const Text('times', style: TextStyle(color: Colors.white70)),
+        const SizedBox(width: 8),
+        _buildDropdown(
+          value: _goalPeriod,
+          items: const [
+            DropdownMenuItem(value: 'day', child: Text('per day')),
+            DropdownMenuItem(value: 'week', child: Text('per week')),
+            DropdownMenuItem(value: 'month', child: Text('per month')),
+            DropdownMenuItem(value: 'year', child: Text('per year')),
+          ],
+          onChanged: (val) => setState(() => _goalPeriod = val!),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDropdownContainer(String text) {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A),
+        border: Border.all(color: const Color(0xFF3A3A3A)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text(text, style: const TextStyle(color: Colors.white)),
+          const SizedBox(width: 8),
+          const Icon(Icons.keyboard_arrow_down, color: Colors.grey, size: 16),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDropdown<T>({required T value, required List<DropdownMenuItem<T>> items, required ValueChanged<T?> onChanged}) {
+    return Container(
+      height: 40,
+      padding: const EdgeInsets.symmetric(horizontal: 12),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A1A),
+        border: Border.all(color: const Color(0xFF3A3A3A)),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<T>(
+          value: value,
+          dropdownColor: const Color(0xFF2A2A2A),
+          icon: const Icon(Icons.keyboard_arrow_down, color: Colors.grey, size: 16),
+          style: const TextStyle(color: Colors.white, fontSize: 14),
+          isDense: true,
+          items: items,
+          onChanged: onChanged,
+        ),
+      ),
     );
   }
 

@@ -46,18 +46,22 @@ class HabitsNotifier extends _$HabitsNotifier {
     required String name,
     required DateTime startDate,
     DateTime? endDate,
-    required String frequencyType,
+    required String repeatMode,
     String? specificDays,
-    int? weeklyGoal,
+    required int goalAmount,
+    required String goalPeriod,
+    String? timeOfDay,
     String? lifeAreaId,
   }) {
     ref.read(habitsRepositoryProvider).createHabit(
           name: name,
           startDate: startDate,
           endDate: endDate,
-          frequencyType: frequencyType,
+          repeatMode: repeatMode,
           specificDays: specificDays,
-          weeklyGoal: weeklyGoal,
+          goalAmount: goalAmount,
+          goalPeriod: goalPeriod,
+          timeOfDay: timeOfDay,
           lifeAreaId: lifeAreaId,
         );
   }
@@ -100,12 +104,19 @@ class HabitsNotifier extends _$HabitsNotifier {
               }
 
               // 2. Validar frecuencia
-              if (habit.frequencyType == 'specific_days' && habit.specificDays != null) {
+              if (habit.repeatMode == 'daily' && habit.specificDays != null) {
                 final days = habit.specificDays!.split(',');
-                if (!days.contains(todayWeekday.toString())) return false;
+                // If the days list isn't empty and doesn't contain today, filter it out.
+                // We map Sunday (7) to specificDays since the UI creates comma-separated string '1,2,3,4,5,6,7'
+                if (days.isNotEmpty && !days.contains(todayWeekday.toString())) return false;
+              } else if (habit.repeatMode == 'monthly' && habit.specificDays != null) {
+                final days = habit.specificDays!.split(',');
+                if (days.isNotEmpty && !days.contains(today.day.toString())) return false;
+              } else if (habit.repeatMode == 'interval' && habit.specificDays != null) {
+                final interval = int.tryParse(habit.specificDays!) ?? 1;
+                final diff = today.difference(habitStart).inDays;
+                if (diff % interval != 0) return false;
               }
-              // Si es 'weekly_goal' o 'daily', por ahora lo mostramos todos los días 
-              // hasta que implementemos la lógica de la barra de progreso semanal.
 
               return true;
             })
@@ -119,7 +130,13 @@ class HabitsNotifier extends _$HabitsNotifier {
                 ),
               ),
             )
-            .toList(growable: false);
+            .toList();
+
+        combined.sort((a, b) {
+          if (a.isCompletedToday && !b.isCompletedToday) return 1;
+          if (!a.isCompletedToday && b.isCompletedToday) return -1;
+          return a.habit.createdAt.compareTo(b.habit.createdAt);
+        });
 
         controller.add(combined);
       }

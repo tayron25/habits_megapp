@@ -719,6 +719,29 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     requiredDuringInsert: false,
     defaultValue: const Constant('daily'),
   );
+  static const VerificationMeta _weeklyGoalMeta = const VerificationMeta(
+    'weeklyGoal',
+  );
+  @override
+  late final GeneratedColumn<int> weeklyGoal = GeneratedColumn<int>(
+    'weekly_goal',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _repeatModeMeta = const VerificationMeta(
+    'repeatMode',
+  );
+  @override
+  late final GeneratedColumn<String> repeatMode = GeneratedColumn<String>(
+    'repeat_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('daily'),
+  );
   static const VerificationMeta _specificDaysMeta = const VerificationMeta(
     'specificDays',
   );
@@ -730,15 +753,39 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _weeklyGoalMeta = const VerificationMeta(
-    'weeklyGoal',
+  static const VerificationMeta _goalAmountMeta = const VerificationMeta(
+    'goalAmount',
   );
   @override
-  late final GeneratedColumn<int> weeklyGoal = GeneratedColumn<int>(
-    'weekly_goal',
+  late final GeneratedColumn<int> goalAmount = GeneratedColumn<int>(
+    'goal_amount',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(1),
+  );
+  static const VerificationMeta _goalPeriodMeta = const VerificationMeta(
+    'goalPeriod',
+  );
+  @override
+  late final GeneratedColumn<String> goalPeriod = GeneratedColumn<String>(
+    'goal_period',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('day'),
+  );
+  static const VerificationMeta _timeOfDayMeta = const VerificationMeta(
+    'timeOfDay',
+  );
+  @override
+  late final GeneratedColumn<String> timeOfDay = GeneratedColumn<String>(
+    'time_of_day',
     aliasedName,
     true,
-    type: DriftSqlType.int,
+    type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
   static const VerificationMeta _lifeAreaIdMeta = const VerificationMeta(
@@ -786,8 +833,12 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
     startDate,
     endDate,
     frequencyType,
-    specificDays,
     weeklyGoal,
+    repeatMode,
+    specificDays,
+    goalAmount,
+    goalPeriod,
+    timeOfDay,
     lifeAreaId,
     createdAt,
     isSynced,
@@ -838,6 +889,18 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
         ),
       );
     }
+    if (data.containsKey('weekly_goal')) {
+      context.handle(
+        _weeklyGoalMeta,
+        weeklyGoal.isAcceptableOrUnknown(data['weekly_goal']!, _weeklyGoalMeta),
+      );
+    }
+    if (data.containsKey('repeat_mode')) {
+      context.handle(
+        _repeatModeMeta,
+        repeatMode.isAcceptableOrUnknown(data['repeat_mode']!, _repeatModeMeta),
+      );
+    }
     if (data.containsKey('specific_days')) {
       context.handle(
         _specificDaysMeta,
@@ -847,10 +910,22 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
         ),
       );
     }
-    if (data.containsKey('weekly_goal')) {
+    if (data.containsKey('goal_amount')) {
       context.handle(
-        _weeklyGoalMeta,
-        weeklyGoal.isAcceptableOrUnknown(data['weekly_goal']!, _weeklyGoalMeta),
+        _goalAmountMeta,
+        goalAmount.isAcceptableOrUnknown(data['goal_amount']!, _goalAmountMeta),
+      );
+    }
+    if (data.containsKey('goal_period')) {
+      context.handle(
+        _goalPeriodMeta,
+        goalPeriod.isAcceptableOrUnknown(data['goal_period']!, _goalPeriodMeta),
+      );
+    }
+    if (data.containsKey('time_of_day')) {
+      context.handle(
+        _timeOfDayMeta,
+        timeOfDay.isAcceptableOrUnknown(data['time_of_day']!, _timeOfDayMeta),
       );
     }
     if (data.containsKey('life_area_id')) {
@@ -903,13 +978,29 @@ class $HabitsTable extends Habits with TableInfo<$HabitsTable, Habit> {
         DriftSqlType.string,
         data['${effectivePrefix}frequency_type'],
       )!,
+      weeklyGoal: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}weekly_goal'],
+      ),
+      repeatMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}repeat_mode'],
+      )!,
       specificDays: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}specific_days'],
       ),
-      weeklyGoal: attachedDatabase.typeMapping.read(
+      goalAmount: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
-        data['${effectivePrefix}weekly_goal'],
+        data['${effectivePrefix}goal_amount'],
+      )!,
+      goalPeriod: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}goal_period'],
+      )!,
+      timeOfDay: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}time_of_day'],
       ),
       lifeAreaId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -938,8 +1029,12 @@ class Habit extends DataClass implements Insertable<Habit> {
   final DateTime startDate;
   final DateTime? endDate;
   final String frequencyType;
-  final String? specificDays;
   final int? weeklyGoal;
+  final String repeatMode;
+  final String? specificDays;
+  final int goalAmount;
+  final String goalPeriod;
+  final String? timeOfDay;
   final String? lifeAreaId;
   final DateTime createdAt;
   final bool isSynced;
@@ -949,8 +1044,12 @@ class Habit extends DataClass implements Insertable<Habit> {
     required this.startDate,
     this.endDate,
     required this.frequencyType,
-    this.specificDays,
     this.weeklyGoal,
+    required this.repeatMode,
+    this.specificDays,
+    required this.goalAmount,
+    required this.goalPeriod,
+    this.timeOfDay,
     this.lifeAreaId,
     required this.createdAt,
     required this.isSynced,
@@ -965,11 +1064,17 @@ class Habit extends DataClass implements Insertable<Habit> {
       map['end_date'] = Variable<DateTime>(endDate);
     }
     map['frequency_type'] = Variable<String>(frequencyType);
+    if (!nullToAbsent || weeklyGoal != null) {
+      map['weekly_goal'] = Variable<int>(weeklyGoal);
+    }
+    map['repeat_mode'] = Variable<String>(repeatMode);
     if (!nullToAbsent || specificDays != null) {
       map['specific_days'] = Variable<String>(specificDays);
     }
-    if (!nullToAbsent || weeklyGoal != null) {
-      map['weekly_goal'] = Variable<int>(weeklyGoal);
+    map['goal_amount'] = Variable<int>(goalAmount);
+    map['goal_period'] = Variable<String>(goalPeriod);
+    if (!nullToAbsent || timeOfDay != null) {
+      map['time_of_day'] = Variable<String>(timeOfDay);
     }
     if (!nullToAbsent || lifeAreaId != null) {
       map['life_area_id'] = Variable<String>(lifeAreaId);
@@ -988,12 +1093,18 @@ class Habit extends DataClass implements Insertable<Habit> {
           ? const Value.absent()
           : Value(endDate),
       frequencyType: Value(frequencyType),
-      specificDays: specificDays == null && nullToAbsent
-          ? const Value.absent()
-          : Value(specificDays),
       weeklyGoal: weeklyGoal == null && nullToAbsent
           ? const Value.absent()
           : Value(weeklyGoal),
+      repeatMode: Value(repeatMode),
+      specificDays: specificDays == null && nullToAbsent
+          ? const Value.absent()
+          : Value(specificDays),
+      goalAmount: Value(goalAmount),
+      goalPeriod: Value(goalPeriod),
+      timeOfDay: timeOfDay == null && nullToAbsent
+          ? const Value.absent()
+          : Value(timeOfDay),
       lifeAreaId: lifeAreaId == null && nullToAbsent
           ? const Value.absent()
           : Value(lifeAreaId),
@@ -1013,8 +1124,12 @@ class Habit extends DataClass implements Insertable<Habit> {
       startDate: serializer.fromJson<DateTime>(json['startDate']),
       endDate: serializer.fromJson<DateTime?>(json['endDate']),
       frequencyType: serializer.fromJson<String>(json['frequencyType']),
-      specificDays: serializer.fromJson<String?>(json['specificDays']),
       weeklyGoal: serializer.fromJson<int?>(json['weeklyGoal']),
+      repeatMode: serializer.fromJson<String>(json['repeatMode']),
+      specificDays: serializer.fromJson<String?>(json['specificDays']),
+      goalAmount: serializer.fromJson<int>(json['goalAmount']),
+      goalPeriod: serializer.fromJson<String>(json['goalPeriod']),
+      timeOfDay: serializer.fromJson<String?>(json['timeOfDay']),
       lifeAreaId: serializer.fromJson<String?>(json['lifeAreaId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
@@ -1029,8 +1144,12 @@ class Habit extends DataClass implements Insertable<Habit> {
       'startDate': serializer.toJson<DateTime>(startDate),
       'endDate': serializer.toJson<DateTime?>(endDate),
       'frequencyType': serializer.toJson<String>(frequencyType),
-      'specificDays': serializer.toJson<String?>(specificDays),
       'weeklyGoal': serializer.toJson<int?>(weeklyGoal),
+      'repeatMode': serializer.toJson<String>(repeatMode),
+      'specificDays': serializer.toJson<String?>(specificDays),
+      'goalAmount': serializer.toJson<int>(goalAmount),
+      'goalPeriod': serializer.toJson<String>(goalPeriod),
+      'timeOfDay': serializer.toJson<String?>(timeOfDay),
       'lifeAreaId': serializer.toJson<String?>(lifeAreaId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'isSynced': serializer.toJson<bool>(isSynced),
@@ -1043,8 +1162,12 @@ class Habit extends DataClass implements Insertable<Habit> {
     DateTime? startDate,
     Value<DateTime?> endDate = const Value.absent(),
     String? frequencyType,
-    Value<String?> specificDays = const Value.absent(),
     Value<int?> weeklyGoal = const Value.absent(),
+    String? repeatMode,
+    Value<String?> specificDays = const Value.absent(),
+    int? goalAmount,
+    String? goalPeriod,
+    Value<String?> timeOfDay = const Value.absent(),
     Value<String?> lifeAreaId = const Value.absent(),
     DateTime? createdAt,
     bool? isSynced,
@@ -1054,8 +1177,12 @@ class Habit extends DataClass implements Insertable<Habit> {
     startDate: startDate ?? this.startDate,
     endDate: endDate.present ? endDate.value : this.endDate,
     frequencyType: frequencyType ?? this.frequencyType,
-    specificDays: specificDays.present ? specificDays.value : this.specificDays,
     weeklyGoal: weeklyGoal.present ? weeklyGoal.value : this.weeklyGoal,
+    repeatMode: repeatMode ?? this.repeatMode,
+    specificDays: specificDays.present ? specificDays.value : this.specificDays,
+    goalAmount: goalAmount ?? this.goalAmount,
+    goalPeriod: goalPeriod ?? this.goalPeriod,
+    timeOfDay: timeOfDay.present ? timeOfDay.value : this.timeOfDay,
     lifeAreaId: lifeAreaId.present ? lifeAreaId.value : this.lifeAreaId,
     createdAt: createdAt ?? this.createdAt,
     isSynced: isSynced ?? this.isSynced,
@@ -1069,12 +1196,22 @@ class Habit extends DataClass implements Insertable<Habit> {
       frequencyType: data.frequencyType.present
           ? data.frequencyType.value
           : this.frequencyType,
-      specificDays: data.specificDays.present
-          ? data.specificDays.value
-          : this.specificDays,
       weeklyGoal: data.weeklyGoal.present
           ? data.weeklyGoal.value
           : this.weeklyGoal,
+      repeatMode: data.repeatMode.present
+          ? data.repeatMode.value
+          : this.repeatMode,
+      specificDays: data.specificDays.present
+          ? data.specificDays.value
+          : this.specificDays,
+      goalAmount: data.goalAmount.present
+          ? data.goalAmount.value
+          : this.goalAmount,
+      goalPeriod: data.goalPeriod.present
+          ? data.goalPeriod.value
+          : this.goalPeriod,
+      timeOfDay: data.timeOfDay.present ? data.timeOfDay.value : this.timeOfDay,
       lifeAreaId: data.lifeAreaId.present
           ? data.lifeAreaId.value
           : this.lifeAreaId,
@@ -1091,8 +1228,12 @@ class Habit extends DataClass implements Insertable<Habit> {
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('frequencyType: $frequencyType, ')
-          ..write('specificDays: $specificDays, ')
           ..write('weeklyGoal: $weeklyGoal, ')
+          ..write('repeatMode: $repeatMode, ')
+          ..write('specificDays: $specificDays, ')
+          ..write('goalAmount: $goalAmount, ')
+          ..write('goalPeriod: $goalPeriod, ')
+          ..write('timeOfDay: $timeOfDay, ')
           ..write('lifeAreaId: $lifeAreaId, ')
           ..write('createdAt: $createdAt, ')
           ..write('isSynced: $isSynced')
@@ -1107,8 +1248,12 @@ class Habit extends DataClass implements Insertable<Habit> {
     startDate,
     endDate,
     frequencyType,
-    specificDays,
     weeklyGoal,
+    repeatMode,
+    specificDays,
+    goalAmount,
+    goalPeriod,
+    timeOfDay,
     lifeAreaId,
     createdAt,
     isSynced,
@@ -1122,8 +1267,12 @@ class Habit extends DataClass implements Insertable<Habit> {
           other.startDate == this.startDate &&
           other.endDate == this.endDate &&
           other.frequencyType == this.frequencyType &&
-          other.specificDays == this.specificDays &&
           other.weeklyGoal == this.weeklyGoal &&
+          other.repeatMode == this.repeatMode &&
+          other.specificDays == this.specificDays &&
+          other.goalAmount == this.goalAmount &&
+          other.goalPeriod == this.goalPeriod &&
+          other.timeOfDay == this.timeOfDay &&
           other.lifeAreaId == this.lifeAreaId &&
           other.createdAt == this.createdAt &&
           other.isSynced == this.isSynced);
@@ -1135,8 +1284,12 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
   final Value<DateTime> startDate;
   final Value<DateTime?> endDate;
   final Value<String> frequencyType;
-  final Value<String?> specificDays;
   final Value<int?> weeklyGoal;
+  final Value<String> repeatMode;
+  final Value<String?> specificDays;
+  final Value<int> goalAmount;
+  final Value<String> goalPeriod;
+  final Value<String?> timeOfDay;
   final Value<String?> lifeAreaId;
   final Value<DateTime> createdAt;
   final Value<bool> isSynced;
@@ -1147,8 +1300,12 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.startDate = const Value.absent(),
     this.endDate = const Value.absent(),
     this.frequencyType = const Value.absent(),
-    this.specificDays = const Value.absent(),
     this.weeklyGoal = const Value.absent(),
+    this.repeatMode = const Value.absent(),
+    this.specificDays = const Value.absent(),
+    this.goalAmount = const Value.absent(),
+    this.goalPeriod = const Value.absent(),
+    this.timeOfDay = const Value.absent(),
     this.lifeAreaId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.isSynced = const Value.absent(),
@@ -1160,8 +1317,12 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     this.startDate = const Value.absent(),
     this.endDate = const Value.absent(),
     this.frequencyType = const Value.absent(),
-    this.specificDays = const Value.absent(),
     this.weeklyGoal = const Value.absent(),
+    this.repeatMode = const Value.absent(),
+    this.specificDays = const Value.absent(),
+    this.goalAmount = const Value.absent(),
+    this.goalPeriod = const Value.absent(),
+    this.timeOfDay = const Value.absent(),
     this.lifeAreaId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.isSynced = const Value.absent(),
@@ -1174,8 +1335,12 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     Expression<DateTime>? startDate,
     Expression<DateTime>? endDate,
     Expression<String>? frequencyType,
-    Expression<String>? specificDays,
     Expression<int>? weeklyGoal,
+    Expression<String>? repeatMode,
+    Expression<String>? specificDays,
+    Expression<int>? goalAmount,
+    Expression<String>? goalPeriod,
+    Expression<String>? timeOfDay,
     Expression<String>? lifeAreaId,
     Expression<DateTime>? createdAt,
     Expression<bool>? isSynced,
@@ -1187,8 +1352,12 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       if (startDate != null) 'start_date': startDate,
       if (endDate != null) 'end_date': endDate,
       if (frequencyType != null) 'frequency_type': frequencyType,
-      if (specificDays != null) 'specific_days': specificDays,
       if (weeklyGoal != null) 'weekly_goal': weeklyGoal,
+      if (repeatMode != null) 'repeat_mode': repeatMode,
+      if (specificDays != null) 'specific_days': specificDays,
+      if (goalAmount != null) 'goal_amount': goalAmount,
+      if (goalPeriod != null) 'goal_period': goalPeriod,
+      if (timeOfDay != null) 'time_of_day': timeOfDay,
       if (lifeAreaId != null) 'life_area_id': lifeAreaId,
       if (createdAt != null) 'created_at': createdAt,
       if (isSynced != null) 'is_synced': isSynced,
@@ -1202,8 +1371,12 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     Value<DateTime>? startDate,
     Value<DateTime?>? endDate,
     Value<String>? frequencyType,
-    Value<String?>? specificDays,
     Value<int?>? weeklyGoal,
+    Value<String>? repeatMode,
+    Value<String?>? specificDays,
+    Value<int>? goalAmount,
+    Value<String>? goalPeriod,
+    Value<String?>? timeOfDay,
     Value<String?>? lifeAreaId,
     Value<DateTime>? createdAt,
     Value<bool>? isSynced,
@@ -1215,8 +1388,12 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
       startDate: startDate ?? this.startDate,
       endDate: endDate ?? this.endDate,
       frequencyType: frequencyType ?? this.frequencyType,
-      specificDays: specificDays ?? this.specificDays,
       weeklyGoal: weeklyGoal ?? this.weeklyGoal,
+      repeatMode: repeatMode ?? this.repeatMode,
+      specificDays: specificDays ?? this.specificDays,
+      goalAmount: goalAmount ?? this.goalAmount,
+      goalPeriod: goalPeriod ?? this.goalPeriod,
+      timeOfDay: timeOfDay ?? this.timeOfDay,
       lifeAreaId: lifeAreaId ?? this.lifeAreaId,
       createdAt: createdAt ?? this.createdAt,
       isSynced: isSynced ?? this.isSynced,
@@ -1242,11 +1419,23 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
     if (frequencyType.present) {
       map['frequency_type'] = Variable<String>(frequencyType.value);
     }
+    if (weeklyGoal.present) {
+      map['weekly_goal'] = Variable<int>(weeklyGoal.value);
+    }
+    if (repeatMode.present) {
+      map['repeat_mode'] = Variable<String>(repeatMode.value);
+    }
     if (specificDays.present) {
       map['specific_days'] = Variable<String>(specificDays.value);
     }
-    if (weeklyGoal.present) {
-      map['weekly_goal'] = Variable<int>(weeklyGoal.value);
+    if (goalAmount.present) {
+      map['goal_amount'] = Variable<int>(goalAmount.value);
+    }
+    if (goalPeriod.present) {
+      map['goal_period'] = Variable<String>(goalPeriod.value);
+    }
+    if (timeOfDay.present) {
+      map['time_of_day'] = Variable<String>(timeOfDay.value);
     }
     if (lifeAreaId.present) {
       map['life_area_id'] = Variable<String>(lifeAreaId.value);
@@ -1271,8 +1460,12 @@ class HabitsCompanion extends UpdateCompanion<Habit> {
           ..write('startDate: $startDate, ')
           ..write('endDate: $endDate, ')
           ..write('frequencyType: $frequencyType, ')
-          ..write('specificDays: $specificDays, ')
           ..write('weeklyGoal: $weeklyGoal, ')
+          ..write('repeatMode: $repeatMode, ')
+          ..write('specificDays: $specificDays, ')
+          ..write('goalAmount: $goalAmount, ')
+          ..write('goalPeriod: $goalPeriod, ')
+          ..write('timeOfDay: $timeOfDay, ')
           ..write('lifeAreaId: $lifeAreaId, ')
           ..write('createdAt: $createdAt, ')
           ..write('isSynced: $isSynced, ')
@@ -5188,8 +5381,12 @@ typedef $$HabitsTableCreateCompanionBuilder =
       Value<DateTime> startDate,
       Value<DateTime?> endDate,
       Value<String> frequencyType,
-      Value<String?> specificDays,
       Value<int?> weeklyGoal,
+      Value<String> repeatMode,
+      Value<String?> specificDays,
+      Value<int> goalAmount,
+      Value<String> goalPeriod,
+      Value<String?> timeOfDay,
       Value<String?> lifeAreaId,
       Value<DateTime> createdAt,
       Value<bool> isSynced,
@@ -5202,8 +5399,12 @@ typedef $$HabitsTableUpdateCompanionBuilder =
       Value<DateTime> startDate,
       Value<DateTime?> endDate,
       Value<String> frequencyType,
-      Value<String?> specificDays,
       Value<int?> weeklyGoal,
+      Value<String> repeatMode,
+      Value<String?> specificDays,
+      Value<int> goalAmount,
+      Value<String> goalPeriod,
+      Value<String?> timeOfDay,
       Value<String?> lifeAreaId,
       Value<DateTime> createdAt,
       Value<bool> isSynced,
@@ -5244,13 +5445,33 @@ class $$HabitsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<int> get weeklyGoal => $composableBuilder(
+    column: $table.weeklyGoal,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get repeatMode => $composableBuilder(
+    column: $table.repeatMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get specificDays => $composableBuilder(
     column: $table.specificDays,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<int> get weeklyGoal => $composableBuilder(
-    column: $table.weeklyGoal,
+  ColumnFilters<int> get goalAmount => $composableBuilder(
+    column: $table.goalAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get goalPeriod => $composableBuilder(
+    column: $table.goalPeriod,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get timeOfDay => $composableBuilder(
+    column: $table.timeOfDay,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -5304,13 +5525,33 @@ class $$HabitsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get weeklyGoal => $composableBuilder(
+    column: $table.weeklyGoal,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get repeatMode => $composableBuilder(
+    column: $table.repeatMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get specificDays => $composableBuilder(
     column: $table.specificDays,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<int> get weeklyGoal => $composableBuilder(
-    column: $table.weeklyGoal,
+  ColumnOrderings<int> get goalAmount => $composableBuilder(
+    column: $table.goalAmount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get goalPeriod => $composableBuilder(
+    column: $table.goalPeriod,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get timeOfDay => $composableBuilder(
+    column: $table.timeOfDay,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -5356,15 +5597,33 @@ class $$HabitsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get weeklyGoal => $composableBuilder(
+    column: $table.weeklyGoal,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get repeatMode => $composableBuilder(
+    column: $table.repeatMode,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get specificDays => $composableBuilder(
     column: $table.specificDays,
     builder: (column) => column,
   );
 
-  GeneratedColumn<int> get weeklyGoal => $composableBuilder(
-    column: $table.weeklyGoal,
+  GeneratedColumn<int> get goalAmount => $composableBuilder(
+    column: $table.goalAmount,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get goalPeriod => $composableBuilder(
+    column: $table.goalPeriod,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get timeOfDay =>
+      $composableBuilder(column: $table.timeOfDay, builder: (column) => column);
 
   GeneratedColumn<String> get lifeAreaId => $composableBuilder(
     column: $table.lifeAreaId,
@@ -5411,8 +5670,12 @@ class $$HabitsTableTableManager
                 Value<DateTime> startDate = const Value.absent(),
                 Value<DateTime?> endDate = const Value.absent(),
                 Value<String> frequencyType = const Value.absent(),
-                Value<String?> specificDays = const Value.absent(),
                 Value<int?> weeklyGoal = const Value.absent(),
+                Value<String> repeatMode = const Value.absent(),
+                Value<String?> specificDays = const Value.absent(),
+                Value<int> goalAmount = const Value.absent(),
+                Value<String> goalPeriod = const Value.absent(),
+                Value<String?> timeOfDay = const Value.absent(),
                 Value<String?> lifeAreaId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
@@ -5423,8 +5686,12 @@ class $$HabitsTableTableManager
                 startDate: startDate,
                 endDate: endDate,
                 frequencyType: frequencyType,
-                specificDays: specificDays,
                 weeklyGoal: weeklyGoal,
+                repeatMode: repeatMode,
+                specificDays: specificDays,
+                goalAmount: goalAmount,
+                goalPeriod: goalPeriod,
+                timeOfDay: timeOfDay,
                 lifeAreaId: lifeAreaId,
                 createdAt: createdAt,
                 isSynced: isSynced,
@@ -5437,8 +5704,12 @@ class $$HabitsTableTableManager
                 Value<DateTime> startDate = const Value.absent(),
                 Value<DateTime?> endDate = const Value.absent(),
                 Value<String> frequencyType = const Value.absent(),
-                Value<String?> specificDays = const Value.absent(),
                 Value<int?> weeklyGoal = const Value.absent(),
+                Value<String> repeatMode = const Value.absent(),
+                Value<String?> specificDays = const Value.absent(),
+                Value<int> goalAmount = const Value.absent(),
+                Value<String> goalPeriod = const Value.absent(),
+                Value<String?> timeOfDay = const Value.absent(),
                 Value<String?> lifeAreaId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
@@ -5449,8 +5720,12 @@ class $$HabitsTableTableManager
                 startDate: startDate,
                 endDate: endDate,
                 frequencyType: frequencyType,
-                specificDays: specificDays,
                 weeklyGoal: weeklyGoal,
+                repeatMode: repeatMode,
+                specificDays: specificDays,
+                goalAmount: goalAmount,
+                goalPeriod: goalPeriod,
+                timeOfDay: timeOfDay,
                 lifeAreaId: lifeAreaId,
                 createdAt: createdAt,
                 isSynced: isSynced,
