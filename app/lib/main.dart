@@ -8,6 +8,8 @@ import 'package:app/widgets/create_habit_modal.dart';
 import 'package:app/widgets/create_template_modal.dart';
 import 'package:app/gym_provider.dart';
 import 'package:app/workout_session_screen.dart';
+import 'package:app/widgets/create_task_modal.dart';
+import 'package:app/tasks_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -75,9 +77,8 @@ class MyHomePage extends ConsumerWidget {
                       final habitsAsync = ref.watch(habitsProvider);
 
                       return habitsAsync.when(
-                        loading: () => const Center(
-                          child: CircularProgressIndicator(),
-                        ),
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
                         error: (error, stack) => Center(
                           child: Text(
                             'Error: $error',
@@ -165,14 +166,14 @@ class MyHomePage extends ConsumerWidget {
                                                         )
                                                         .toggleHabit(
                                                           habitWithStatus
-                                                              .habit.id,
+                                                              .habit
+                                                              .id,
                                                           value ?? false,
                                                         );
                                                   },
-                                                  activeColor:
-                                                      Theme.of(context)
-                                                          .colorScheme
-                                                          .primary,
+                                                  activeColor: Theme.of(
+                                                    context,
+                                                  ).colorScheme.primary,
                                                   checkColor: Colors.black,
                                                   side: const BorderSide(
                                                     color: Color(0xFF4A4A4A),
@@ -180,8 +181,8 @@ class MyHomePage extends ConsumerWidget {
                                                   shape: RoundedRectangleBorder(
                                                     borderRadius:
                                                         BorderRadius.circular(
-                                                      4,
-                                                    ),
+                                                          4,
+                                                        ),
                                                   ),
                                                 ),
                                               ),
@@ -225,9 +226,13 @@ class MyHomePage extends ConsumerWidget {
                       final templatesAsync = ref.watch(gymTemplatesProvider);
 
                       return templatesAsync.when(
-                        loading: () => const Center(child: CircularProgressIndicator()),
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
                         error: (error, stack) => Center(
-                          child: Text('Error: $error', style: const TextStyle(color: Colors.grey)),
+                          child: Text(
+                            'Error: $error',
+                            style: const TextStyle(color: Colors.grey),
+                          ),
                         ),
                         data: (templatesList) {
                           if (templatesList.isEmpty) {
@@ -235,7 +240,10 @@ class MyHomePage extends ConsumerWidget {
                               child: Text(
                                 'Aún no tienes rutinas.\nCrea una desde el botón +.',
                                 textAlign: TextAlign.center,
-                                style: TextStyle(color: Colors.grey, fontSize: 15),
+                                style: TextStyle(
+                                  color: Colors.grey,
+                                  fontSize: 15,
+                                ),
                               ),
                             );
                           }
@@ -245,24 +253,29 @@ class MyHomePage extends ConsumerWidget {
                             itemCount: templatesList.length,
                             itemBuilder: (context, index) {
                               final item = templatesList[index];
-                              
+
                               return SizedBox(
                                 width: 220,
                                 child: Padding(
                                   padding: EdgeInsets.only(
-                                    right: index == templatesList.length - 1 ? 0 : 12,
+                                    right: index == templatesList.length - 1
+                                        ? 0
+                                        : 12,
                                   ),
                                   child: Card(
                                     color: const Color(0xFF171717),
                                     elevation: 0,
                                     shape: RoundedRectangleBorder(
                                       borderRadius: BorderRadius.circular(18),
-                                      side: const BorderSide(color: Color(0xFF262626)),
+                                      side: const BorderSide(
+                                        color: Color(0xFF262626),
+                                      ),
                                     ),
                                     child: Padding(
                                       padding: const EdgeInsets.all(16),
                                       child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        crossAxisAlignment:
+                                            CrossAxisAlignment.start,
                                         children: [
                                           Text(
                                             item.template.name,
@@ -293,20 +306,47 @@ class MyHomePage extends ConsumerWidget {
                                                 Navigator.push(
                                                   context,
                                                   MaterialPageRoute(
-                                                    builder: (context) => WorkoutSessionScreen(
-                                                      templateId: item.template.id,
-                                                      templateName: item.template.name,
-                                                      exercises: item.exercises.map((e) => e.exerciseName).toList(),
-                                                    ),
+                                                    builder: (context) =>
+                                                        WorkoutSessionScreen(
+                                                          templateId:
+                                                              item.template.id,
+                                                          templateName: item
+                                                              .template
+                                                              .name,
+                                                          exercises: item
+                                                              .exercises
+                                                              .map(
+                                                                (e) => e
+                                                                    .exerciseName,
+                                                              )
+                                                              .toList(),
+                                                        ),
                                                   ),
                                                 );
                                               },
-                                              icon: const Icon(Icons.play_arrow, size: 18),
-                                              label: const Text('Entrenar', style: TextStyle(fontWeight: FontWeight.bold)),
+                                              icon: const Icon(
+                                                Icons.play_arrow,
+                                                size: 18,
+                                              ),
+                                              label: const Text(
+                                                'Entrenar',
+                                                style: TextStyle(
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
                                               style: FilledButton.styleFrom(
-                                                backgroundColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-                                                foregroundColor: Theme.of(context).colorScheme.primary,
-                                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                                backgroundColor:
+                                                    Theme.of(context)
+                                                        .colorScheme
+                                                        .primary
+                                                        .withOpacity(0.2),
+                                                foregroundColor: Theme.of(
+                                                  context,
+                                                ).colorScheme.primary,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(10),
+                                                ),
                                               ),
                                             ),
                                           ),
@@ -327,6 +367,169 @@ class MyHomePage extends ConsumerWidget {
             ),
           ),
           // --- FIN SECCIÓN GIMNASIO ---
+          // --- SECCIÓN TAREAS PENDIENTES ---
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                const Text(
+                  'Tareas Pendientes',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.w700,
+                    color: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Consumer(
+                  builder: (context, ref, child) {
+                    final tasksAsync = ref.watch(tasksProvider);
+
+                    return tasksAsync.when(
+                      loading: () =>
+                          const Center(child: CircularProgressIndicator()),
+                      error: (error, stack) => Center(
+                        child: Text(
+                          'Error: $error',
+                          style: const TextStyle(color: Colors.grey),
+                        ),
+                      ),
+                      data: (tasksList) {
+                        // Filtramos para mostrar solo las que NO están completadas
+                        final pendingTasks = tasksList
+                            .where((t) => !t.isCompleted)
+                            .toList();
+
+                        if (pendingTasks.isEmpty) {
+                          return Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.all(16),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF171717),
+                              borderRadius: BorderRadius.circular(16),
+                              border: Border.all(
+                                color: const Color(0xFF262626),
+                              ),
+                            ),
+                            child: const Text(
+                              '¡Todo al día! 😎\nNo hay tareas pendientes.',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(
+                                color: Colors.grey,
+                                fontSize: 15,
+                              ),
+                            ),
+                          );
+                        }
+
+                        return ListView.builder(
+                          shrinkWrap:
+                              true, // CRÍTICO: Permite que el ListView viva dentro de un SingleChildScrollView
+                          physics:
+                              const NeverScrollableScrollPhysics(), // Desactiva el scroll interno de esta lista
+                          itemCount: pendingTasks.length,
+                          itemBuilder: (context, index) {
+                            final task = pendingTasks[index];
+
+                            // Asignamos colores según la prioridad
+                            Color priorityColor;
+                            if (task.priority == 'Alta')
+                              priorityColor = Colors.redAccent;
+                            else if (task.priority == 'Media')
+                              priorityColor = Colors.amber;
+                            else
+                              priorityColor = Colors.blueAccent;
+
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF1A1A1A),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border(
+                                  left: BorderSide(
+                                    color: priorityColor,
+                                    width: 4,
+                                  ),
+                                ),
+                              ),
+                              child: ListTile(
+                                contentPadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 4,
+                                ),
+                                leading: Checkbox(
+                                  value: task.isCompleted,
+                                  activeColor: Theme.of(
+                                    context,
+                                  ).colorScheme.primary,
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(6),
+                                  ),
+                                  onChanged: (bool? value) {
+                                    if (value != null) {
+                                      // Marcamos la tarea como completada (desaparecerá de esta lista)
+                                      ref
+                                          .read(tasksProvider.notifier)
+                                          .toggleTask(task.id, value);
+                                    }
+                                  },
+                                ),
+                                title: Text(
+                                  task.title,
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                subtitle: task.dueDate != null
+                                    ? Padding(
+                                        padding: const EdgeInsets.only(
+                                          top: 4.0,
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            const Icon(
+                                              Icons.calendar_today,
+                                              size: 12,
+                                              color: Colors.grey,
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              'Vence el ${task.dueDate!.day}/${task.dueDate!.month}',
+                                              style: const TextStyle(
+                                                color: Colors.grey,
+                                                fontSize: 12,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      )
+                                    : null,
+                                trailing: IconButton(
+                                  icon: const Icon(
+                                    Icons.delete_outline,
+                                    color: Colors.white38,
+                                  ),
+                                  onPressed: () {
+                                    ref
+                                        .read(tasksProvider.notifier)
+                                        .removeTask(task.id);
+                                  },
+                                ),
+                              ),
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
+              ],
+            ),
+          ),
+          // --- FIN SECCIÓN TAREAS ---
           Expanded(
             child: notesAsync.when(
               loading: () => const Center(child: CircularProgressIndicator()),
@@ -375,8 +578,7 @@ class MyHomePage extends ConsumerWidget {
                               note.isSynced
                                   ? Icons.cloud_done
                                   : Icons.cloud_off,
-                              color:
-                                  note.isSynced ? Colors.green : Colors.grey,
+                              color: note.isSynced ? Colors.green : Colors.grey,
                               size: 20,
                             ),
                           ],
@@ -405,7 +607,8 @@ class MyHomePage extends ConsumerWidget {
                 children: [
                   const SizedBox(height: 12),
                   Container(
-                    width: 40, height: 4,
+                    width: 40,
+                    height: 4,
                     decoration: BoxDecoration(
                       color: Colors.grey.shade800,
                       borderRadius: BorderRadius.circular(10),
@@ -417,7 +620,8 @@ class MyHomePage extends ConsumerWidget {
                     title: const Text('Captura Rápida (Nota)'),
                     onTap: () {
                       Navigator.pop(context); // Cierra el menú
-                      showModalBottomSheet(    // Abre el modal de nota
+                      showModalBottomSheet(
+                        // Abre el modal de nota
                         context: context,
                         isScrollControlled: true,
                         backgroundColor: Colors.transparent,
@@ -426,11 +630,15 @@ class MyHomePage extends ConsumerWidget {
                     },
                   ),
                   ListTile(
-                    leading: const Icon(Icons.repeat, color: Colors.greenAccent),
+                    leading: const Icon(
+                      Icons.repeat,
+                      color: Colors.greenAccent,
+                    ),
                     title: const Text('Nuevo Hábito'),
                     onTap: () {
                       Navigator.pop(context); // Cierra el menú
-                      showModalBottomSheet(    // Abre el modal de hábito
+                      showModalBottomSheet(
+                        // Abre el modal de hábito
                         context: context,
                         isScrollControlled: true,
                         backgroundColor: Colors.transparent,
@@ -439,15 +647,37 @@ class MyHomePage extends ConsumerWidget {
                     },
                   ),
                   ListTile(
-                    leading: const Icon(Icons.fitness_center, color: Colors.blueAccent),
+                    leading: const Icon(
+                      Icons.fitness_center,
+                      color: Colors.blueAccent,
+                    ),
                     title: const Text('Nueva Rutina de Gym'),
                     onTap: () {
                       Navigator.pop(context); // Cierra el menú
-                      showModalBottomSheet(    // Abre el modal de la rutina
+                      showModalBottomSheet(
+                        // Abre el modal de la rutina
                         context: context,
-                        isScrollControlled: true, // ¡CRÍTICO para que tome el alto que definimos!
+                        isScrollControlled:
+                            true, // ¡CRÍTICO para que tome el alto que definimos!
                         backgroundColor: Colors.transparent,
                         builder: (context) => const CreateTemplateModal(),
+                      );
+                    },
+                  ),
+                  ListTile(
+                    leading: const Icon(
+                      Icons.check_circle_outline,
+                      color: Colors.purpleAccent,
+                    ),
+                    title: const Text('Nueva Tarea'),
+                    onTap: () {
+                      Navigator.pop(context); // Cierra el menú
+                      showModalBottomSheet(
+                        // Abre el modal de la tarea
+                        context: context,
+                        isScrollControlled: true,
+                        backgroundColor: Colors.transparent,
+                        builder: (context) => const CreateTaskModal(),
                       );
                     },
                   ),

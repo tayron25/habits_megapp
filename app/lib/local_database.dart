@@ -89,6 +89,19 @@ class WorkoutSets extends Table {
   @override
   Set<Column> get primaryKey => {id};
 }
+class Tasks extends Table {
+  TextColumn get id => text()();
+  TextColumn get title => text()();
+  TextColumn get description => text().nullable()();
+  TextColumn get priority => text().withDefault(const Constant('Media'))();
+  DateTimeColumn get dueDate => dateTime().nullable()();
+  BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
+  DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
+  BoolColumn get isSynced => boolean().clientDefault(() => false)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
 
 // --- CONFIGURACIÓN DE LA BASE DE DATOS ---
 @DriftDatabase(tables: [
@@ -98,14 +111,14 @@ class WorkoutSets extends Table {
   WorkoutTemplates,
   TemplateExercises,
   WorkoutLogs,
-  WorkoutSets
+  WorkoutSets,
+  Tasks // <-- Nueva tabla
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
-  // ¡Subimos a la versión 3!
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4; // <-- Sube a 4
 
   @override
   MigrationStrategy get migration {
@@ -114,17 +127,19 @@ class AppDatabase extends _$AppDatabase {
         await m.createAll();
       },
       onUpgrade: (Migrator m, int from, int to) async {
-        // Si el usuario venía de la versión 1, le creamos los hábitos
         if (from < 2) {
           await m.createTable(habits);
           await m.createTable(habitLogs);
         }
-        // Si venía de la versión 1 o 2, le creamos el gimnasio
         if (from < 3) {
           await m.createTable(workoutTemplates);
           await m.createTable(templateExercises);
           await m.createTable(workoutLogs);
           await m.createTable(workoutSets);
+        }
+        // Migración para la Versión 4 (Tareas)
+        if (from < 4) {
+          await m.createTable(tasks);
         }
       },
       beforeOpen: (details) async {
