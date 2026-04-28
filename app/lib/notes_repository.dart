@@ -45,4 +45,20 @@ class NotesRepository {
       print('🔍 Stacktrace: $stack');
     }
   }
+
+  Future<void> deleteNote(String id) async {
+    // 1. Borrado Local (Drift)
+    await (_database.delete(
+      _database.notes,
+    )..where((t) => t.id.equals(id))).go();
+
+    // 2. Borrado Remoto (Supabase)
+    try {
+      await _supabaseClient.from('notes').delete().eq('id', id);
+    } catch (e) {
+      // Si falla el internet, al menos ya se borró del cel.
+      // Podríamos implementar una lógica de "pendientes por borrar" más adelante.
+      print('Error al sincronizar borrado de nota: $e');
+    }
+  }
 }
