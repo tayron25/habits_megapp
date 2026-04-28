@@ -33,13 +33,13 @@ La UI lee de la base de datos local usando Streams (`ref.watch`). Al crear/edita
 
 ## 🏗️ Estado Actual del Desarrollo
 
-El esquema actual de base de datos local (Drift) está en la **versión 7 (v7)** con 12 tablas operativas en el ecosistema:
+El esquema actual de base de datos local (Drift) está en la **versión 8 (v8)** con 12 tablas operativas en el ecosistema:
 
 - **Módulo Áreas de Vida:** Tabla `LifeAreas` (`id`, `name`, `icon`, `createdAt`, `isSynced`).
 - **Módulo Notas (Quick Captures):** Tabla `Notes` (`id`, `content`, `createdAt`, `isSynced`).
 - **Módulo Hábitos (V3):** Tablas `Habits` (avanzada con `startDate`, `endDate`, `repeatMode`, `goalAmount`, `goalPeriod`, `timeOfDay`, `lifeAreaId`) y `HabitLogs` (registro diario).
 - **Módulo Gimnasio:** Tablas `WorkoutTemplates` (plantillas), `TemplateExercises` (ejercicios), `WorkoutLogs` (sesión activa), y `WorkoutSets` (series/repeticiones).
-- **Módulo Tareas (To-Do):** Tabla `Tasks` (`title`, `description`, `priority`, `dueDate`, `isCompleted`).
+- **Módulo Tareas (To-Do):** Tabla `Tasks` (`title`, `description`, `priority`, `dueDate`, `lifeAreaId`, `isCompleted`).
 - **Módulo Roadmaps (Metas Largo Plazo):** Tablas `Roadmaps` (meta global), `RoadmapMilestones` (hitos) y `MilestoneTasks` (checklist de hitos).
 
 La interfaz gráfica principal (`main.dart` - Pantalla Hoy) está estructurada de forma vertical, mostrando únicamente la información relevante para **el día de hoy** (ej. los hábitos se filtran reactivamente para no mostrar los que expiran o no tocan hoy). El `FloatingActionButton` centraliza la creación de cualquier entidad mediante modales (`showModalBottomSheet`).
@@ -63,7 +63,8 @@ Registro detallado del entrenamiento de fuerza.
 ### 3. Tareas Únicas (To-Do List)
 Gestor de acciones puntuales.
 - Prioridades (Alta, Media, Baja) indicadas visualmente con colores.
-- Fecha de vencimiento opcional.
+- Fecha de vencimiento opcional con widget de cuenta regresiva en lenguaje natural.
+- Vinculación a Áreas de Vida (categorización transversal).
 
 ### 4. Notas (Quick Captures)
 Espacio de "fricción cero" para capturar pensamientos al vuelo en texto plano.
@@ -77,7 +78,7 @@ Gestor de proyectos macro.
 
 ## 📊 Módulo Analítico (El Core - Pendiente)
 
-Toda la data generada hasta ahora (`v7`) está preparada para alimentar el módulo de Inteligencia de Negocios Personal mediante cruces de información:
+Toda la data generada hasta ahora (`v8`) está preparada para alimentar el módulo de Inteligencia de Negocios Personal mediante cruces de información:
 - Gráficos históricos de cumplimiento de hábitos.
 - Progresión de cargas en gimnasio a lo largo del tiempo.
 - Distribución de tiempo/esfuerzo en las nuevas "Áreas de Vida" (cruzando Hábitos, Tareas y Roadmaps).

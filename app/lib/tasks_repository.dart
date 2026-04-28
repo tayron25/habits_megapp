@@ -20,6 +20,7 @@ class TasksRepository {
     String? description,
     required String priority,
     DateTime? dueDate,
+    String? lifeAreaId,
   }) async {
     final id = _uuid.v4();
     final now = DateTime.now();
@@ -32,6 +33,7 @@ class TasksRepository {
             description: Value(description),
             priority: Value(priority),
             dueDate: Value(dueDate),
+            lifeAreaId: Value(lifeAreaId),
             createdAt: Value(now),
             isSynced: const Value(false),
           ),
@@ -45,6 +47,7 @@ class TasksRepository {
         'description': description,
         'priority': priority,
         'due_date': dueDate?.toIso8601String(),
+        'life_area_id': lifeAreaId,
         'created_at': now.toIso8601String(),
         'is_synced': true,
       });

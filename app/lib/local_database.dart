@@ -123,6 +123,7 @@ class Tasks extends Table {
   TextColumn get description => text().nullable()();
   TextColumn get priority => text().withDefault(const Constant('Media'))();
   DateTimeColumn get dueDate => dateTime().nullable()();
+  TextColumn get lifeAreaId => text().nullable()();
   BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
   BoolColumn get isSynced => boolean().clientDefault(() => false)();
@@ -185,7 +186,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration {
@@ -230,6 +231,10 @@ class AppDatabase extends _$AppDatabase {
           await m.addColumn(habits, habits.goalAmount);
           await m.addColumn(habits, habits.goalPeriod);
           await m.addColumn(habits, habits.timeOfDay);
+        }
+        // Migración para la Versión 8 (Tasks LifeArea)
+        if (from < 8) {
+          await m.addColumn(tasks, tasks.lifeAreaId);
         }
       },
       beforeOpen: (details) async {

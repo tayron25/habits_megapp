@@ -147,4 +147,140 @@ class GymRepository {
       print('❌ Error sincronizando Entrenamiento de Gym: $e');
     }
   }
+
+  // --- 3. Obtener el Log de hoy (o crearlo) para una plantilla ---
+  Future<String> getOrCreateTodayWorkoutLog(String templateId) async {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+    final existingLog = await (_database.select(_database.workoutLogs)
+          ..where((l) =>
+              l.templateId.equals(templateId) &
+              l.date.isBetweenValues(todayStart, todayEnd)))
+        .getSingleOrNull();
+
+    if (existingLog != null) {
+      return existingLog.id;
+    }
+
+    final logId = _uuid.v4();
+    await _database.into(_database.workoutLogs).insert(
+          WorkoutLogsCompanion.insert(
+            id: logId,
+            templateId: Value(templateId),
+            date: Value(now),
+            isSynced: const Value(false),
+          ),
+        );
+    
+    // Remoto en background
+    _supabaseClient.from('workout_logs').insert({
+      'id': logId,
+      'template_id': templateId,
+      'date': now.toIso8601String(),
+      'is_synced': true,
+    }).then((_) {
+      (_database.update(_database.workoutLogs)..where((t) => t.id.equals(logId)))
+          .write(const WorkoutLogsCompanion(isSynced: Value(true)));
+    }).catchError((e) => print('Error sync workout log: $e'));
+
+    return logId;
+  }
+
+  // --- 4. Historial y Autocompletado de Ejercicios ---
+  Future<List<WorkoutSet>> getLastWorkoutSets(String exerciseName) async {
+    // 1. Encontrar el logId del último entrenamiento donde se hizo este ejercicio
+    final lastSet = await (_database.select(_database.workoutSets)
+          ..where((s) => s.exerciseName.equals(exerciseName))
+          ..orderBy([(s) => OrderingTerm(expression: s.createdAt, mode: OrderingMode.desc)])
+          ..limit(1))
+        .getSingleOrNull();
+
+    if (lastSet == null) return [];
+
+    // 2. Obtener todos los sets de ese ejercicio en ese mismo logId
+    return (_database.select(_database.workoutSets)
+          ..where((s) =>
+              s.exerciseName.equals(exerciseName) &
+              s.workoutLogId.equals(lastSet.workoutLogId))
+          ..orderBy([(s) => OrderingTerm(expression: s.createdAt, mode: OrderingMode.asc)]))
+        .get();
+  }
+
+  Future<double> getHistoricalMaxWeight(String exerciseName) async {
+    final sets = await (_database.select(_database.workoutSets)
+          ..where((s) => s.exerciseName.equals(exerciseName)))
+        .get();
+    
+    if (sets.isEmpty) return 0.0;
+    
+    double maxWeight = 0;
+    for (var s in sets) {
+      if (s.weight > maxWeight) maxWeight = s.weight;
+    }
+    return maxWeight;
+  }
+
+  // --- 5. CRUD de Series Individuales ---
+  Future<String> addWorkoutSet({
+    required String workoutLogId,
+    required String exerciseName,
+    required double weight,
+    required int reps,
+  }) async {
+    final setId = _uuid.v4();
+    final now = DateTime.now();
+
+    await _database.into(_database.workoutSets).insert(
+          WorkoutSetsCompanion.insert(
+            id: setId,
+            workoutLogId: workoutLogId,
+            exerciseName: exerciseName,
+            weight: weight,
+            reps: reps,
+            createdAt: Value(now),
+            isSynced: const Value(false),
+          ),
+        );
+
+    // Sync
+    _supabaseClient.from('workout_sets').insert({
+      'id': setId,
+      'workout_log_id': workoutLogId,
+      'exercise_name': exerciseName,
+      'weight': weight,
+      'reps': reps,
+      'created_at': now.toIso8601String(),
+      'is_synced': true,
+    }).then((_) {
+      (_database.update(_database.workoutSets)..where((s) => s.id.equals(setId)))
+          .write(const WorkoutSetsCompanion(isSynced: Value(true)));
+    }).catchError((e) => print('Error sync set: $e'));
+
+    return setId;
+  }
+
+  Future<void> updateWorkoutSet(String setId, double weight, int reps) async {
+    await (_database.update(_database.workoutSets)..where((s) => s.id.equals(setId)))
+        .write(WorkoutSetsCompanion(
+          weight: Value(weight),
+          reps: Value(reps),
+          isSynced: const Value(false),
+        ));
+
+    // Sync
+    _supabaseClient.from('workout_sets').update({
+      'weight': weight,
+      'reps': reps,
+    }).eq('id', setId).then((_) {
+      (_database.update(_database.workoutSets)..where((s) => s.id.equals(setId)))
+          .write(const WorkoutSetsCompanion(isSynced: Value(true)));
+    }).catchError((e) => print('Error sync update set: $e'));
+  }
+
+  Future<void> deleteWorkoutSet(String setId) async {
+    await (_database.delete(_database.workoutSets)..where((s) => s.id.equals(setId))).go();
+    _supabaseClient.from('workout_sets').delete().eq('id', setId).catchError((e) => print('Error sync delete set: $e'));
+  }
 }

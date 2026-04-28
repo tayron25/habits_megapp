@@ -33,12 +33,14 @@ class TasksNotifier extends _$TasksNotifier {
     String? description,
     required String priority,
     DateTime? dueDate,
+    String? lifeAreaId,
   }) {
     ref.read(tasksRepositoryProvider).createTask(
           title: title,
           description: description,
           priority: priority,
           dueDate: dueDate,
+          lifeAreaId: lifeAreaId,
         );
   }
 

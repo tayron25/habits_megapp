@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-// Asegúrate de que esta ruta apunte a tu provider de tareas
 import 'package:app/tasks_provider.dart';
+import 'package:app/life_areas_provider.dart';
+import 'package:app/widgets/create_life_area_modal.dart';
 
 class CreateTaskModal extends ConsumerStatefulWidget {
   const CreateTaskModal({super.key});
@@ -16,6 +17,7 @@ class _CreateTaskModalState extends ConsumerState<CreateTaskModal> {
 
   String _selectedPriority = 'Media';
   DateTime? _selectedDate;
+  String? _selectedLifeAreaId;
 
   @override
   void dispose() {
@@ -30,15 +32,12 @@ class _CreateTaskModalState extends ConsumerState<CreateTaskModal> {
 
     final desc = _descController.text.trim();
 
-    // Llamamos a la magia de Riverpod para guardar la tarea
-    // ✅ Lo correcto (sin la palabra Notifier)
-    ref
-        .read(tasksProvider.notifier)
-        .addTask(
+    ref.read(tasksProvider.notifier).addTask(
           title: title,
           description: desc.isEmpty ? null : desc,
           priority: _selectedPriority,
           dueDate: _selectedDate,
+          lifeAreaId: _selectedLifeAreaId,
         );
 
     Navigator.pop(context);
@@ -72,6 +71,7 @@ class _CreateTaskModalState extends ConsumerState<CreateTaskModal> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final lifeAreasAsync = ref.watch(lifeAreasProvider);
 
     return SafeArea(
       child: Padding(
@@ -79,11 +79,7 @@ class _CreateTaskModalState extends ConsumerState<CreateTaskModal> {
           left: 16,
           right: 16,
           top: 12,
-          bottom:
-              16 +
-              MediaQuery.of(
-                context,
-              ).viewInsets.bottom, // Evita que el teclado lo tape
+          bottom: 16 + MediaQuery.of(context).viewInsets.bottom,
         ),
         child: Container(
           decoration: BoxDecoration(
@@ -97,7 +93,6 @@ class _CreateTaskModalState extends ConsumerState<CreateTaskModal> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                // Barrita superior
                 Center(
                   child: Container(
                     width: 42,
@@ -111,44 +106,67 @@ class _CreateTaskModalState extends ConsumerState<CreateTaskModal> {
                 const SizedBox(height: 20),
                 const Text(
                   'Nueva Tarea',
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.white),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 16),
 
-                // --- Título ---
                 TextField(
                   controller: _titleController,
                   autofocus: true,
                   style: const TextStyle(color: Colors.white, fontSize: 16),
-                  decoration: _inputDecoration(
-                    '¿Qué necesitas hacer?',
-                    colors.primary,
-                  ),
+                  decoration: _inputDecoration('¿Qué necesitas hacer?', colors.primary),
                 ),
                 const SizedBox(height: 12),
 
-                // --- Descripción (Opcional) ---
                 TextField(
                   controller: _descController,
                   maxLines: 2,
                   style: const TextStyle(color: Colors.white70, fontSize: 14),
-                  decoration: _inputDecoration(
-                    'Detalles (opcional)',
-                    colors.primary,
-                  ),
+                  decoration: _inputDecoration('Detalles (opcional)', colors.primary),
+                ),
+                const SizedBox(height: 16),
+
+                // --- Área de Vida ---
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text('Área de Vida:', style: TextStyle(color: Colors.grey, fontSize: 14)),
+                    TextButton.icon(
+                      icon: const Icon(Icons.add, size: 16),
+                      label: const Text('Nueva'),
+                      onPressed: () {
+                        showModalBottomSheet(
+                          context: context,
+                          isScrollControlled: true,
+                          backgroundColor: Colors.transparent,
+                          builder: (c) => const CreateLifeAreaModal(),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+                lifeAreasAsync.when(
+                  loading: () => const CircularProgressIndicator(),
+                  error: (_,__) => const Text('Error al cargar áreas', style: TextStyle(color: Colors.red)),
+                  data: (areas) {
+                    if (areas.isEmpty) return const Text('Sin áreas. Presiona "Nueva".', style: TextStyle(color: Colors.white38));
+                    return Wrap(
+                      spacing: 8,
+                      children: areas.map((a) => ChoiceChip(
+                        label: Text(a.name),
+                        selected: _selectedLifeAreaId == a.id,
+                        selectedColor: colors.primary,
+                        backgroundColor: const Color(0xFF1A1A1A),
+                        onSelected: (sel) => setState(() => _selectedLifeAreaId = sel ? a.id : null),
+                      )).toList(),
+                    );
+                  }
                 ),
                 const SizedBox(height: 16),
 
                 // --- Prioridad ---
-                const Text(
-                  'Prioridad:',
-                  style: TextStyle(color: Colors.grey, fontSize: 14),
-                ),
+                const Text('Prioridad:', style: TextStyle(color: Colors.grey, fontSize: 14)),
                 const SizedBox(height: 8),
                 Row(
                   children: ['Baja', 'Media', 'Alta'].map((priority) {
@@ -167,21 +185,14 @@ class _CreateTaskModalState extends ConsumerState<CreateTaskModal> {
                         child: ChoiceChip(
                           label: Text(
                             priority,
-                            style: TextStyle(
-                              color: isSelected ? Colors.black : Colors.white,
-                            ),
+                            style: TextStyle(color: isSelected ? Colors.black : Colors.white),
                           ),
                           selected: isSelected,
                           selectedColor: priorityColor,
                           backgroundColor: const Color(0xFF1A1A1A),
-                          side: BorderSide(
-                            color: isSelected
-                                ? priorityColor
-                                : const Color(0xFF3A3A3A),
-                          ),
+                          side: BorderSide(color: isSelected ? priorityColor : const Color(0xFF3A3A3A)),
                           onSelected: (selected) {
-                            if (selected)
-                              setState(() => _selectedPriority = priority);
+                            if (selected) setState(() => _selectedPriority = priority);
                           },
                         ),
                       ),
@@ -195,19 +206,12 @@ class _CreateTaskModalState extends ConsumerState<CreateTaskModal> {
                   contentPadding: EdgeInsets.zero,
                   leading: const Icon(Icons.calendar_today, color: Colors.grey),
                   title: Text(
-                    _selectedDate == null
-                        ? 'Sin fecha límite'
-                        : 'Para el ${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
-                    style: TextStyle(
-                      color: _selectedDate == null ? Colors.grey : Colors.white,
-                    ),
+                    _selectedDate == null ? 'Sin fecha límite' : 'Para el ${_selectedDate!.day}/${_selectedDate!.month}/${_selectedDate!.year}',
+                    style: TextStyle(color: _selectedDate == null ? Colors.grey : Colors.white),
                   ),
                   trailing: _selectedDate != null
                       ? IconButton(
-                          icon: const Icon(
-                            Icons.close,
-                            color: Colors.redAccent,
-                          ),
+                          icon: const Icon(Icons.close, color: Colors.redAccent),
                           onPressed: () => setState(() => _selectedDate = null),
                         )
                       : null,
@@ -223,14 +227,9 @@ class _CreateTaskModalState extends ConsumerState<CreateTaskModal> {
                     style: FilledButton.styleFrom(
                       backgroundColor: colors.primary,
                       foregroundColor: colors.onPrimary,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                    child: const Text(
-                      'Crear Tarea',
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
+                    child: const Text('Crear Tarea', style: TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],
@@ -248,14 +247,7 @@ class _CreateTaskModalState extends ConsumerState<CreateTaskModal> {
       filled: true,
       fillColor: const Color(0xFF1A1A1A),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide.none,
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(12),
-        borderSide: BorderSide(color: primaryColor.withOpacity(0.5)),
-      ),
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
     );
   }
 }
