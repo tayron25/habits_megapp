@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/gym_provider.dart';
 import 'package:app/local_database.dart';
@@ -33,15 +34,14 @@ class ExerciseExecutionScreen extends ConsumerStatefulWidget {
       _ExerciseExecutionScreenState();
 }
 
-class _ExerciseExecutionScreenState
-    extends ConsumerState<ExerciseExecutionScreen> {
+class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScreen> {
   bool _isLoading = true;
   String? _workoutLogId;
-  double _historicalMax = 0;
+  WorkoutSet? _historicalMaxSet;
   List<ExerciseSetDraft> _sets = [];
 
-  // Cronómetro
-  int _seconds = 0;
+  // Cronómetro (Cuenta regresiva)
+  int _seconds = 90; // Default 1:30
   Timer? _timer;
   bool _isTimerRunning = false;
 
@@ -65,7 +65,7 @@ class _ExerciseExecutionScreenState
       _workoutLogId = await repo.getOrCreateTodayWorkoutLog(widget.templateId);
 
       // 2. Obtener Récord Histórico
-      _historicalMax = await repo.getHistoricalMaxWeight(widget.exerciseName);
+      _historicalMaxSet = await repo.getHistoricalMaxWeight(widget.exerciseName);
 
       // 3. Autocompletado (última sesión)
       final lastSets = await repo.getLastWorkoutSets(widget.exerciseName);
@@ -75,7 +75,6 @@ class _ExerciseExecutionScreenState
             .map((s) => ExerciseSetDraft(weight: s.weight, reps: s.reps))
             .toList();
       } else {
-        // Por defecto una serie vacía
         _sets = [ExerciseSetDraft(weight: 0, reps: 0)];
       }
     } catch (e) {
@@ -87,23 +86,121 @@ class _ExerciseExecutionScreenState
     }
   }
 
-  // --- Cronómetro ---
+  // --- Helpers para edición rápida ---
+  void _editValueDialog({
+    required BuildContext context,
+    required String title,
+    required String initialValue,
+    required void Function(String) onSaved,
+  }) {
+    final controller = TextEditingController(text: initialValue);
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(title, style: const TextStyle(color: Colors.white)),
+        content: TextField(
+          controller: controller,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          autofocus: true,
+          style: const TextStyle(color: Colors.white, fontSize: 32, fontWeight: FontWeight.bold),
+          textAlign: TextAlign.center,
+          decoration: const InputDecoration(
+            focusedBorder: UnderlineInputBorder(borderSide: BorderSide(color: Colors.greenAccent)),
+            enabledBorder: UnderlineInputBorder(borderSide: BorderSide(color: Color(0xFF333333))),
+          ),
+          onSubmitted: (val) {
+            onSaved(val);
+            Navigator.pop(context);
+          },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancelar', style: TextStyle(color: Colors.grey)),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Theme.of(context).colorScheme.primary),
+            onPressed: () {
+              onSaved(controller.text);
+              Navigator.pop(context);
+            },
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _editTimer(BuildContext context) {
+    _editValueDialog(
+      context: context,
+      title: 'Segundos de Descanso',
+      initialValue: _seconds.toString(),
+      onSaved: (val) {
+        final parsed = int.tryParse(val) ?? _seconds;
+        setState(() => _seconds = parsed);
+      },
+    );
+  }
+
+  void _editWeight(BuildContext context, int index) {
+    final s = _sets[index];
+    if (s.isCompleted) return;
+    _editValueDialog(
+      context: context,
+      title: 'Kilos',
+      initialValue: s.weight.toStringAsFixed(1).replaceAll('.0', ''),
+      onSaved: (val) {
+        final parsed = double.tryParse(val.replaceAll(',', '.')) ?? s.weight;
+        setState(() => s.weight = parsed);
+      },
+    );
+  }
+
+  void _editReps(BuildContext context, int index) {
+    final s = _sets[index];
+    if (s.isCompleted) return;
+    _editValueDialog(
+      context: context,
+      title: 'Repeticiones',
+      initialValue: s.reps.toString(),
+      onSaved: (val) {
+        final parsed = int.tryParse(val) ?? s.reps;
+        setState(() => s.reps = parsed);
+      },
+    );
+  }
+
+  // --- Cronómetro (Cuenta Regresiva) ---
   void _toggleTimer() {
     if (_isTimerRunning) {
       _timer?.cancel();
     } else {
+      if (_seconds <= 0) _seconds = 90; // Reset si ya había terminado
+      
       _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
-        if (mounted) setState(() => _seconds++);
+        if (mounted) {
+          setState(() {
+            if (_seconds > 0) {
+              _seconds--;
+            } else {
+              _timer?.cancel();
+              _isTimerRunning = false;
+              HapticFeedback.heavyImpact(); // Vibración
+              SystemSound.play(SystemSoundType.click); // Sonido
+            }
+          });
+        }
       });
     }
     setState(() => _isTimerRunning = !_isTimerRunning);
   }
 
-  void _resetTimer() {
-    _timer?.cancel();
+  void _adjustTimer(int delta) {
     setState(() {
-      _seconds = 0;
-      _isTimerRunning = false;
+      _seconds = (_seconds + delta).clamp(0, 3600);
     });
   }
 
@@ -115,7 +212,6 @@ class _ExerciseExecutionScreenState
 
   // --- Series ---
   void _addSet() {
-    // Copiar la anterior si existe
     double lastWeight = 0;
     int lastReps = 0;
     if (_sets.isNotEmpty) {
@@ -142,7 +238,6 @@ class _ExerciseExecutionScreenState
     final repo = ref.read(gymRepositoryProvider);
 
     if (!s.isCompleted) {
-      // Marcar como completado -> Guardar en BD
       final newId = await repo.addWorkoutSet(
         workoutLogId: _workoutLogId!,
         exerciseName: widget.exerciseName,
@@ -153,8 +248,11 @@ class _ExerciseExecutionScreenState
         s.id = newId;
         s.isCompleted = true;
       });
+      if (!_isTimerRunning) {
+        _seconds = 90;
+        _toggleTimer();
+      }
     } else {
-      // Desmarcar -> Eliminar de BD
       if (s.id != null) {
         await repo.deleteWorkoutSet(s.id!);
       }
@@ -165,10 +263,9 @@ class _ExerciseExecutionScreenState
     }
   }
 
-  void _updateWeight(int index, double delta) async {
+  void _updateWeight(int index, double delta) {
     final s = _sets[index];
-    if (s.isCompleted)
-      return; // No editar si está completado (opcional, o desmarcar)
+    if (s.isCompleted) return;
     setState(() {
       s.weight = (s.weight + delta).clamp(0.0, 999.0);
     });
@@ -197,112 +294,127 @@ class _ExerciseExecutionScreenState
       body: Column(
         children: [
           // Header: Récord y Cronómetro
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            decoration: const BoxDecoration(
-              color: Color(0xFF171717),
-              border: Border(bottom: BorderSide(color: Color(0xFF262626))),
-            ),
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Récord Histórico
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text(
-                      'Récord Histórico',
-                      style: TextStyle(color: Colors.grey, fontSize: 12),
+                // Récord
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF171717),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFF2A2A2A)),
                     ),
-                    const SizedBox(height: 4),
-                    Row(
+                    child: Column(
                       children: [
-                        const Icon(
-                          Icons.emoji_events,
-                          color: Colors.amber,
-                          size: 16,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${_historicalMax.toStringAsFixed(1)} kg',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                            fontSize: 16,
-                          ),
+                        const Text('Mejor Marca', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(Icons.emoji_events, color: Colors.amber, size: 20),
+                            const SizedBox(width: 6),
+                            Text(
+                              _historicalMaxSet != null 
+                                  ? '${_historicalMaxSet!.weight.toStringAsFixed(1).replaceAll('.0', '')} kg x ${_historicalMaxSet!.reps}'
+                                  : '0 kg',
+                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                  ],
+                  ),
                 ),
-                // Cronómetro
-                Row(
-                  children: [
-                    Text(
-                      _formatTime(_seconds),
-                      style: TextStyle(
-                        color: _isTimerRunning
-                            ? Colors.greenAccent
-                            : Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.bold,
-                        fontFeatures: const [FontFeature.tabularFigures()],
-                      ),
+                const SizedBox(width: 16),
+                // Timer
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF171717),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(color: const Color(0xFF2A2A2A)),
                     ),
-                    const SizedBox(width: 8),
-                    IconButton(
-                      icon: Icon(
-                        _isTimerRunning ? Icons.pause : Icons.play_arrow,
-                      ),
-                      color: _isTimerRunning
-                          ? Colors.greenAccent
-                          : Colors.white,
-                      onPressed: _toggleTimer,
-                      constraints: const BoxConstraints(),
-                      padding: const EdgeInsets.all(8),
-                      style: IconButton.styleFrom(
-                        backgroundColor: const Color(0xFF262626),
-                      ),
+                    child: Column(
+                      children: [
+                        const Text('Descanso', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                        const SizedBox(height: 8),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            GestureDetector(
+                              onTap: () => _adjustTimer(-30),
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(color: Color(0xFF262626), shape: BoxShape.circle),
+                                child: const Icon(Icons.remove, size: 16, color: Colors.white70),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            GestureDetector(
+                              onTap: () => _editTimer(context), // Abrir edición al tocar el timer
+                              child: Text(
+                                _formatTime(_seconds),
+                                style: TextStyle(
+                                  color: _seconds == 0 
+                                      ? Colors.redAccent 
+                                      : (_isTimerRunning ? Colors.greenAccent : Colors.white),
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 22,
+                                  fontFeatures: const [FontFeature.tabularFigures()],
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 14),
+                            GestureDetector(
+                              onTap: () => _adjustTimer(30),
+                              child: Container(
+                                padding: const EdgeInsets.all(6),
+                                decoration: const BoxDecoration(color: Color(0xFF262626), shape: BoxShape.circle),
+                                child: const Icon(Icons.add, size: 16, color: Colors.white70),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 4),
-                    IconButton(
-                      icon: const Icon(Icons.refresh, size: 18),
-                      color: Colors.grey,
-                      onPressed: _resetTimer,
-                      constraints: const BoxConstraints(),
-                      padding: const EdgeInsets.all(8),
-                      style: IconButton.styleFrom(
-                        backgroundColor: const Color(0xFF262626),
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               ],
             ),
           ),
 
-          // Lista de Series
+          // Lista de Series (Más amplia para que quepan ~5)
           Expanded(
             child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _sets.length + 1, // +1 para el botón añadir
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              itemCount: _sets.length + 1,
               itemBuilder: (context, index) {
                 if (index == _sets.length) {
                   return Padding(
-                    padding: const EdgeInsets.only(top: 8.0),
-                    child: TextButton.icon(
+                    padding: const EdgeInsets.symmetric(vertical: 16.0),
+                    child: FilledButton.icon(
                       onPressed: _addSet,
                       icon: const Icon(Icons.add),
-                      label: const Text('Añadir Serie'),
-                      style: TextButton.styleFrom(
+                      label: const Text('Añadir Serie', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFF171717),
                         foregroundColor: Theme.of(context).colorScheme.primary,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                          side: const BorderSide(color: Color(0xFF262626)),
+                        ),
                       ),
                     ),
                   );
                 }
 
                 final s = _sets[index];
-                return _buildSetRow(index, s);
+                return _buildSpaciousSetRow(context, index, s);
               },
             ),
           ),
@@ -311,180 +423,129 @@ class _ExerciseExecutionScreenState
     );
   }
 
-  Widget _buildSetRow(int index, ExerciseSetDraft s) {
+  Widget _buildSpaciousSetRow(BuildContext context, int index, ExerciseSetDraft s) {
     final isDone = s.isCompleted;
 
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 16),
       decoration: BoxDecoration(
-        color: isDone
-            ? Colors.green.withOpacity(0.15)
-            : const Color(0xFF1A1A1A),
-        borderRadius: BorderRadius.circular(16),
+        color: isDone ? Colors.green.withOpacity(0.1) : const Color(0xFF1A1A1A),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDone
-              ? Colors.green.withOpacity(0.5)
-              : const Color(0xFF2A2A2A),
+          color: isDone ? Colors.green.withOpacity(0.4) : const Color(0xFF2A2A2A),
+          width: 1.5,
         ),
       ),
-      child: Column(
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Header de la serie
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 14,
-                  backgroundColor: isDone
-                      ? Colors.green
-                      : const Color(0xFF333333),
-                  child: Text(
-                    '${index + 1}',
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const Spacer(),
-                if (!isDone)
-                  IconButton(
-                    icon: const Icon(
-                      Icons.close,
-                      color: Colors.redAccent,
-                      size: 20,
-                    ),
-                    padding: EdgeInsets.zero,
-                    constraints: const BoxConstraints(),
-                    onPressed: () => _removeSet(index),
-                  ),
-              ],
+          // Index y botón borrar
+          GestureDetector(
+            onLongPress: () => _removeSet(index),
+            child: CircleAvatar(
+              radius: 14,
+              backgroundColor: isDone ? Colors.green : const Color(0xFF333333),
+              child: Text(
+                '${index + 1}',
+                style: const TextStyle(fontSize: 14, color: Colors.white, fontWeight: FontWeight.bold),
+              ),
             ),
           ),
 
-          // Controles + / - (solo si no está done, o si permitimos editar igual)
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 16),
-            child: Row(
-              children: [
-                // Control Kilos
-                Expanded(
-                  child: Column(
-                    children: [
-                      const Text(
-                        'Kilos',
-                        style: TextStyle(color: Colors.grey, fontSize: 12),
-                      ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _AdjustButton(
-                            icon: Icons.remove,
-                            onPressed: isDone
-                                ? null
-                                : () => _updateWeight(index, -2.5),
-                          ),
-                          Expanded(
-                            child: Text(
-                              '${s.weight.toStringAsFixed(1)}',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: isDone
-                                    ? Colors.greenAccent
-                                    : Colors.white,
-                              ),
-                            ),
-                          ),
-                          _AdjustButton(
-                            icon: Icons.add,
-                            onPressed: isDone
-                                ? null
-                                : () => _updateWeight(index, 2.5),
-                          ),
-                        ],
-                      ),
-                    ],
+          // Peso
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text('kg', style: TextStyle(color: Colors.grey, fontSize: 12, height: 0.8)),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _AdjustButton(
+                    icon: Icons.remove,
+                    size: 28,
+                    onPressed: isDone ? null : () => _updateWeight(index, -2.5),
                   ),
-                ),
-
-                Container(
-                  width: 1,
-                  height: 40,
-                  color: const Color(0xFF333333),
-                  margin: const EdgeInsets.symmetric(horizontal: 12),
-                ),
-
-                // Control Reps
-                Expanded(
-                  child: Column(
-                    children: [
-                      const Text(
-                        'Reps',
-                        style: TextStyle(color: Colors.grey, fontSize: 12),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: isDone ? null : () => _editWeight(context, index),
+                    child: SizedBox(
+                      width: 48,
+                      child: Text(
+                        s.weight.toStringAsFixed(1).replaceAll('.0', ''),
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: isDone ? Colors.greenAccent : Colors.white,
+                        ),
                       ),
-                      const SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          _AdjustButton(
-                            icon: Icons.remove,
-                            onPressed: isDone
-                                ? null
-                                : () => _updateReps(index, -1),
-                          ),
-                          Expanded(
-                            child: Text(
-                              '${s.reps}',
-                              textAlign: TextAlign.center,
-                              style: TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: isDone
-                                    ? Colors.greenAccent
-                                    : Colors.white,
-                              ),
-                            ),
-                          ),
-                          _AdjustButton(
-                            icon: Icons.add,
-                            onPressed: isDone
-                                ? null
-                                : () => _updateReps(index, 1),
-                          ),
-                        ],
-                      ),
-                    ],
+                    ),
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(width: 4),
+                  _AdjustButton(
+                    icon: Icons.add,
+                    size: 28,
+                    onPressed: isDone ? null : () => _updateWeight(index, 2.5),
+                  ),
+                ],
+              ),
+            ],
           ),
 
-          // Botón Completar
-          InkWell(
+          // Reps
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Text('reps', style: TextStyle(color: Colors.grey, fontSize: 12, height: 0.8)),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  _AdjustButton(
+                    icon: Icons.remove,
+                    size: 28,
+                    onPressed: isDone ? null : () => _updateReps(index, -1),
+                  ),
+                  const SizedBox(width: 4),
+                  GestureDetector(
+                    onTap: isDone ? null : () => _editReps(context, index),
+                    child: SizedBox(
+                      width: 32,
+                      child: Text(
+                        '${s.reps}',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 22,
+                          fontWeight: FontWeight.bold,
+                          color: isDone ? Colors.greenAccent : Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 4),
+                  _AdjustButton(
+                    icon: Icons.add,
+                    size: 28,
+                    onPressed: isDone ? null : () => _updateReps(index, 1),
+                  ),
+                ],
+              ),
+            ],
+          ),
+
+          // Check
+          GestureDetector(
             onTap: () => _toggleSetCompletion(index),
-            borderRadius: const BorderRadius.vertical(
-              bottom: Radius.circular(16),
-            ),
             child: Container(
-              width: double.infinity,
-              padding: const EdgeInsets.symmetric(vertical: 12),
+              padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: isDone
-                    ? Colors.green.withOpacity(0.2)
-                    : const Color(0xFF262626),
-                borderRadius: const BorderRadius.vertical(
-                  bottom: Radius.circular(16),
-                ),
+                color: isDone ? Colors.green.withOpacity(0.2) : const Color(0xFF262626),
+                borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
                 isDone ? Icons.check : Icons.check_circle_outline,
                 color: isDone ? Colors.greenAccent : Colors.grey,
+                size: 24,
               ),
             ),
           ),
@@ -496,28 +557,25 @@ class _ExerciseExecutionScreenState
 
 class _AdjustButton extends StatelessWidget {
   final IconData icon;
+  final double size;
   final VoidCallback? onPressed;
 
-  const _AdjustButton({required this.icon, this.onPressed});
+  const _AdjustButton({required this.icon, required this.size, this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
       onTap: onPressed,
       child: Container(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
-          color: onPressed == null
-              ? Colors.transparent
-              : const Color(0xFF262626),
+          color: onPressed == null ? Colors.transparent : const Color(0xFF262626),
           shape: BoxShape.circle,
         ),
         child: Icon(
           icon,
-          size: 20,
-          color: onPressed == null
-              ? Colors.grey.withOpacity(0.3)
-              : Colors.white,
+          size: size - 10,
+          color: onPressed == null ? Colors.grey.withOpacity(0.3) : Colors.white,
         ),
       ),
     );

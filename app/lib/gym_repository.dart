@@ -188,6 +188,26 @@ class GymRepository {
     return logId;
   }
 
+  Future<Map<String, List<String>>> getExerciseCatalog() async {
+    final catalog = <String, Set<String>>{};
+    
+    final templates = await _database.select(_database.templateExercises).get();
+    for (var t in templates) {
+      catalog.putIfAbsent(t.muscleGroup, () => {}).add(t.exerciseName);
+    }
+    
+    // Pre-poblar algunos por defecto si está vacío
+    if (catalog.isEmpty) {
+      catalog['Pecho'] = {'Press de Banca', 'Aperturas', 'Flexiones'};
+      catalog['Espalda'] = {'Dominadas', 'Remo con Barra', 'Jalón al Pecho'};
+      catalog['Piernas'] = {'Sentadillas', 'Prensa', 'Peso Muerto Rumano', 'Extensiones'};
+      catalog['Brazos'] = {'Curl de Bíceps', 'Press Francés', 'Curl Martillo'};
+      catalog['Hombros'] = {'Press Militar', 'Elevaciones Laterales', 'Pájaros'};
+    }
+    
+    return catalog.map((key, value) => MapEntry(key, value.toList()..sort()));
+  }
+
   // --- 4. Historial y Autocompletado de Ejercicios ---
   Future<List<WorkoutSet>> getLastWorkoutSets(String exerciseName) async {
     // 1. Encontrar el logId del último entrenamiento donde se hizo este ejercicio
@@ -208,18 +228,20 @@ class GymRepository {
         .get();
   }
 
-  Future<double> getHistoricalMaxWeight(String exerciseName) async {
+  Future<WorkoutSet?> getHistoricalMaxWeight(String exerciseName) async {
     final sets = await (_database.select(_database.workoutSets)
           ..where((s) => s.exerciseName.equals(exerciseName)))
         .get();
     
-    if (sets.isEmpty) return 0.0;
+    if (sets.isEmpty) return null;
     
-    double maxWeight = 0;
+    WorkoutSet? maxSet;
     for (var s in sets) {
-      if (s.weight > maxWeight) maxWeight = s.weight;
+      if (maxSet == null || s.weight > maxSet.weight) {
+        maxSet = s;
+      }
     }
-    return maxWeight;
+    return maxSet;
   }
 
   // --- 5. CRUD de Series Individuales ---
