@@ -167,6 +167,14 @@ class MilestoneTasks extends Table {
   Set<Column> get primaryKey => {id};
 }
 
+class PendingSyncActions extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get localTable => text()(); // Renombrado para evitar conflicto con Drift
+  TextColumn get itemId => text()();
+  TextColumn get action => text()(); // 'DELETE' (INSERT/UPDATE use isSynced flag)
+  DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
+}
+
 // --- CONFIGURACIÓN DE LA BASE DE DATOS ---
 @DriftDatabase(tables: [
   Notes,
@@ -180,13 +188,14 @@ class MilestoneTasks extends Table {
   Tasks,
   Roadmaps,
   RoadmapMilestones,
-  MilestoneTasks
+  MilestoneTasks,
+  PendingSyncActions
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration {
@@ -235,6 +244,10 @@ class AppDatabase extends _$AppDatabase {
         // Migración para la Versión 8 (Tasks LifeArea)
         if (from < 8) {
           await m.addColumn(tasks, tasks.lifeAreaId);
+        }
+        // Migración para la Versión 9 (Sync Queue)
+        if (from < 9) {
+          await m.createTable(pendingSyncActions);
         }
       },
       beforeOpen: (details) async {

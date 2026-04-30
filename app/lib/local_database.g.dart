@@ -5021,6 +5021,355 @@ class MilestoneTasksCompanion extends UpdateCompanion<MilestoneTask> {
   }
 }
 
+class $PendingSyncActionsTable extends PendingSyncActions
+    with TableInfo<$PendingSyncActionsTable, PendingSyncAction> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PendingSyncActionsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _localTableMeta = const VerificationMeta(
+    'localTable',
+  );
+  @override
+  late final GeneratedColumn<String> localTable = GeneratedColumn<String>(
+    'local_table',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _itemIdMeta = const VerificationMeta('itemId');
+  @override
+  late final GeneratedColumn<String> itemId = GeneratedColumn<String>(
+    'item_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _actionMeta = const VerificationMeta('action');
+  @override
+  late final GeneratedColumn<String> action = GeneratedColumn<String>(
+    'action',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    localTable,
+    itemId,
+    action,
+    createdAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'pending_sync_actions';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PendingSyncAction> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('local_table')) {
+      context.handle(
+        _localTableMeta,
+        localTable.isAcceptableOrUnknown(data['local_table']!, _localTableMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_localTableMeta);
+    }
+    if (data.containsKey('item_id')) {
+      context.handle(
+        _itemIdMeta,
+        itemId.isAcceptableOrUnknown(data['item_id']!, _itemIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_itemIdMeta);
+    }
+    if (data.containsKey('action')) {
+      context.handle(
+        _actionMeta,
+        action.isAcceptableOrUnknown(data['action']!, _actionMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_actionMeta);
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PendingSyncAction map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PendingSyncAction(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      localTable: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}local_table'],
+      )!,
+      itemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}item_id'],
+      )!,
+      action: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}action'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+    );
+  }
+
+  @override
+  $PendingSyncActionsTable createAlias(String alias) {
+    return $PendingSyncActionsTable(attachedDatabase, alias);
+  }
+}
+
+class PendingSyncAction extends DataClass
+    implements Insertable<PendingSyncAction> {
+  final int id;
+  final String localTable;
+  final String itemId;
+  final String action;
+  final DateTime createdAt;
+  const PendingSyncAction({
+    required this.id,
+    required this.localTable,
+    required this.itemId,
+    required this.action,
+    required this.createdAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['local_table'] = Variable<String>(localTable);
+    map['item_id'] = Variable<String>(itemId);
+    map['action'] = Variable<String>(action);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    return map;
+  }
+
+  PendingSyncActionsCompanion toCompanion(bool nullToAbsent) {
+    return PendingSyncActionsCompanion(
+      id: Value(id),
+      localTable: Value(localTable),
+      itemId: Value(itemId),
+      action: Value(action),
+      createdAt: Value(createdAt),
+    );
+  }
+
+  factory PendingSyncAction.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PendingSyncAction(
+      id: serializer.fromJson<int>(json['id']),
+      localTable: serializer.fromJson<String>(json['localTable']),
+      itemId: serializer.fromJson<String>(json['itemId']),
+      action: serializer.fromJson<String>(json['action']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'localTable': serializer.toJson<String>(localTable),
+      'itemId': serializer.toJson<String>(itemId),
+      'action': serializer.toJson<String>(action),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+    };
+  }
+
+  PendingSyncAction copyWith({
+    int? id,
+    String? localTable,
+    String? itemId,
+    String? action,
+    DateTime? createdAt,
+  }) => PendingSyncAction(
+    id: id ?? this.id,
+    localTable: localTable ?? this.localTable,
+    itemId: itemId ?? this.itemId,
+    action: action ?? this.action,
+    createdAt: createdAt ?? this.createdAt,
+  );
+  PendingSyncAction copyWithCompanion(PendingSyncActionsCompanion data) {
+    return PendingSyncAction(
+      id: data.id.present ? data.id.value : this.id,
+      localTable: data.localTable.present
+          ? data.localTable.value
+          : this.localTable,
+      itemId: data.itemId.present ? data.itemId.value : this.itemId,
+      action: data.action.present ? data.action.value : this.action,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingSyncAction(')
+          ..write('id: $id, ')
+          ..write('localTable: $localTable, ')
+          ..write('itemId: $itemId, ')
+          ..write('action: $action, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(id, localTable, itemId, action, createdAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PendingSyncAction &&
+          other.id == this.id &&
+          other.localTable == this.localTable &&
+          other.itemId == this.itemId &&
+          other.action == this.action &&
+          other.createdAt == this.createdAt);
+}
+
+class PendingSyncActionsCompanion extends UpdateCompanion<PendingSyncAction> {
+  final Value<int> id;
+  final Value<String> localTable;
+  final Value<String> itemId;
+  final Value<String> action;
+  final Value<DateTime> createdAt;
+  const PendingSyncActionsCompanion({
+    this.id = const Value.absent(),
+    this.localTable = const Value.absent(),
+    this.itemId = const Value.absent(),
+    this.action = const Value.absent(),
+    this.createdAt = const Value.absent(),
+  });
+  PendingSyncActionsCompanion.insert({
+    this.id = const Value.absent(),
+    required String localTable,
+    required String itemId,
+    required String action,
+    this.createdAt = const Value.absent(),
+  }) : localTable = Value(localTable),
+       itemId = Value(itemId),
+       action = Value(action);
+  static Insertable<PendingSyncAction> custom({
+    Expression<int>? id,
+    Expression<String>? localTable,
+    Expression<String>? itemId,
+    Expression<String>? action,
+    Expression<DateTime>? createdAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (localTable != null) 'local_table': localTable,
+      if (itemId != null) 'item_id': itemId,
+      if (action != null) 'action': action,
+      if (createdAt != null) 'created_at': createdAt,
+    });
+  }
+
+  PendingSyncActionsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? localTable,
+    Value<String>? itemId,
+    Value<String>? action,
+    Value<DateTime>? createdAt,
+  }) {
+    return PendingSyncActionsCompanion(
+      id: id ?? this.id,
+      localTable: localTable ?? this.localTable,
+      itemId: itemId ?? this.itemId,
+      action: action ?? this.action,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (localTable.present) {
+      map['local_table'] = Variable<String>(localTable.value);
+    }
+    if (itemId.present) {
+      map['item_id'] = Variable<String>(itemId.value);
+    }
+    if (action.present) {
+      map['action'] = Variable<String>(action.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PendingSyncActionsCompanion(')
+          ..write('id: $id, ')
+          ..write('localTable: $localTable, ')
+          ..write('itemId: $itemId, ')
+          ..write('action: $action, ')
+          ..write('createdAt: $createdAt')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -5040,6 +5389,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $RoadmapMilestonesTable roadmapMilestones =
       $RoadmapMilestonesTable(this);
   late final $MilestoneTasksTable milestoneTasks = $MilestoneTasksTable(this);
+  late final $PendingSyncActionsTable pendingSyncActions =
+      $PendingSyncActionsTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -5057,6 +5408,7 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     roadmaps,
     roadmapMilestones,
     milestoneTasks,
+    pendingSyncActions,
   ];
 }
 
@@ -7743,6 +8095,215 @@ typedef $$MilestoneTasksTableProcessedTableManager =
       MilestoneTask,
       PrefetchHooks Function()
     >;
+typedef $$PendingSyncActionsTableCreateCompanionBuilder =
+    PendingSyncActionsCompanion Function({
+      Value<int> id,
+      required String localTable,
+      required String itemId,
+      required String action,
+      Value<DateTime> createdAt,
+    });
+typedef $$PendingSyncActionsTableUpdateCompanionBuilder =
+    PendingSyncActionsCompanion Function({
+      Value<int> id,
+      Value<String> localTable,
+      Value<String> itemId,
+      Value<String> action,
+      Value<DateTime> createdAt,
+    });
+
+class $$PendingSyncActionsTableFilterComposer
+    extends Composer<_$AppDatabase, $PendingSyncActionsTable> {
+  $$PendingSyncActionsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get localTable => $composableBuilder(
+    column: $table.localTable,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get itemId => $composableBuilder(
+    column: $table.itemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get action => $composableBuilder(
+    column: $table.action,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PendingSyncActionsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PendingSyncActionsTable> {
+  $$PendingSyncActionsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get localTable => $composableBuilder(
+    column: $table.localTable,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get itemId => $composableBuilder(
+    column: $table.itemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get action => $composableBuilder(
+    column: $table.action,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PendingSyncActionsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PendingSyncActionsTable> {
+  $$PendingSyncActionsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get localTable => $composableBuilder(
+    column: $table.localTable,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get itemId =>
+      $composableBuilder(column: $table.itemId, builder: (column) => column);
+
+  GeneratedColumn<String> get action =>
+      $composableBuilder(column: $table.action, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+}
+
+class $$PendingSyncActionsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PendingSyncActionsTable,
+          PendingSyncAction,
+          $$PendingSyncActionsTableFilterComposer,
+          $$PendingSyncActionsTableOrderingComposer,
+          $$PendingSyncActionsTableAnnotationComposer,
+          $$PendingSyncActionsTableCreateCompanionBuilder,
+          $$PendingSyncActionsTableUpdateCompanionBuilder,
+          (
+            PendingSyncAction,
+            BaseReferences<
+              _$AppDatabase,
+              $PendingSyncActionsTable,
+              PendingSyncAction
+            >,
+          ),
+          PendingSyncAction,
+          PrefetchHooks Function()
+        > {
+  $$PendingSyncActionsTableTableManager(
+    _$AppDatabase db,
+    $PendingSyncActionsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PendingSyncActionsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PendingSyncActionsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PendingSyncActionsTableAnnotationComposer(
+                $db: db,
+                $table: table,
+              ),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> localTable = const Value.absent(),
+                Value<String> itemId = const Value.absent(),
+                Value<String> action = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => PendingSyncActionsCompanion(
+                id: id,
+                localTable: localTable,
+                itemId: itemId,
+                action: action,
+                createdAt: createdAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String localTable,
+                required String itemId,
+                required String action,
+                Value<DateTime> createdAt = const Value.absent(),
+              }) => PendingSyncActionsCompanion.insert(
+                id: id,
+                localTable: localTable,
+                itemId: itemId,
+                action: action,
+                createdAt: createdAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PendingSyncActionsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PendingSyncActionsTable,
+      PendingSyncAction,
+      $$PendingSyncActionsTableFilterComposer,
+      $$PendingSyncActionsTableOrderingComposer,
+      $$PendingSyncActionsTableAnnotationComposer,
+      $$PendingSyncActionsTableCreateCompanionBuilder,
+      $$PendingSyncActionsTableUpdateCompanionBuilder,
+      (
+        PendingSyncAction,
+        BaseReferences<
+          _$AppDatabase,
+          $PendingSyncActionsTable,
+          PendingSyncAction
+        >,
+      ),
+      PendingSyncAction,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -7771,4 +8332,6 @@ class $AppDatabaseManager {
       $$RoadmapMilestonesTableTableManager(_db, _db.roadmapMilestones);
   $$MilestoneTasksTableTableManager get milestoneTasks =>
       $$MilestoneTasksTableTableManager(_db, _db.milestoneTasks);
+  $$PendingSyncActionsTableTableManager get pendingSyncActions =>
+      $$PendingSyncActionsTableTableManager(_db, _db.pendingSyncActions);
 }

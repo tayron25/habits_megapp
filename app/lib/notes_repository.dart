@@ -47,18 +47,29 @@ class NotesRepository {
   }
 
   Future<void> deleteNote(String id) async {
-    // 1. Borrado Local (Drift)
+    // 1. Registrar el borrado pendiente para Supabase
+    await _database.into(_database.pendingSyncActions).insert(
+          PendingSyncActionsCompanion.insert(
+            localTable: 'notes',
+            itemId: id,
+            action: 'DELETE',
+          ),
+        );
+
+    // 2. Borrado Local (Drift)
     await (_database.delete(
       _database.notes,
     )..where((t) => t.id.equals(id))).go();
 
-    // 2. Borrado Remoto (Supabase)
+    // 3. Intento de Borrado Remoto inmediato (opcional, el sync service lo reintentará)
     try {
       await _supabaseClient.from('notes').delete().eq('id', id);
+      // Si tuvo éxito inmediato, quitamos de la cola
+      await (_database.delete(_database.pendingSyncActions)
+            ..where((t) => t.localTable.equals('notes') & t.itemId.equals(id)))
+          .go();
     } catch (e) {
-      // Si falla el internet, al menos ya se borró del cel.
-      // Podríamos implementar una lógica de "pendientes por borrar" más adelante.
-      print('Error al sincronizar borrado de nota: $e');
+      print('Nota borrada localmente. Se sincronizará con la nube cuando haya internet.');
     }
   }
 }

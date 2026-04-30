@@ -51,14 +51,26 @@ class RoadmapsRepository {
   }
 
   Future<void> deleteRoadmap(String id) async {
-    // 1. Local
+    // 1. Registrar borrado pendiente
+    await _database.into(_database.pendingSyncActions).insert(
+          PendingSyncActionsCompanion.insert(
+            localTable: 'roadmaps',
+            itemId: id,
+            action: 'DELETE',
+          ),
+        );
+
+    // 2. Local
     await (_database.delete(_database.roadmaps)..where((r) => r.id.equals(id))).go();
 
-    // 2. Remoto
+    // 3. Remoto
     try {
       await _supabaseClient.from('roadmaps').delete().eq('id', id);
+      await (_database.delete(_database.pendingSyncActions)
+            ..where((t) => t.localTable.equals('roadmaps') & t.itemId.equals(id)))
+          .go();
     } catch (e) {
-      print('❌ Error al eliminar roadmap: $e');
+      print('❌ Error al eliminar roadmap: $e. Pendiente de sync.');
     }
   }
 
@@ -99,11 +111,26 @@ class RoadmapsRepository {
   }
 
   Future<void> deleteMilestone(String id) async {
+    // 1. Registrar borrado pendiente
+    await _database.into(_database.pendingSyncActions).insert(
+          PendingSyncActionsCompanion.insert(
+            localTable: 'roadmap_milestones',
+            itemId: id,
+            action: 'DELETE',
+          ),
+        );
+
+    // 2. Local
     await (_database.delete(_database.roadmapMilestones)..where((m) => m.id.equals(id))).go();
+
+    // 3. Remoto
     try {
       await _supabaseClient.from('roadmap_milestones').delete().eq('id', id);
+      await (_database.delete(_database.pendingSyncActions)
+            ..where((t) => t.localTable.equals('roadmap_milestones') & t.itemId.equals(id)))
+          .go();
     } catch (e) {
-      print('❌ Error al eliminar milestone: $e');
+      print('❌ Error al eliminar milestone: $e. Pendiente de sync.');
     }
   }
 
@@ -148,22 +175,42 @@ class RoadmapsRepository {
   Future<void> toggleMilestoneTask(String id, bool isCompleted) async {
     // 1. Local
     await (_database.update(_database.milestoneTasks)..where((t) => t.id.equals(id)))
-        .write(MilestoneTasksCompanion(isCompleted: Value(isCompleted)));
+        .write(MilestoneTasksCompanion(
+          isCompleted: Value(isCompleted),
+          isSynced: const Value(false),
+        ));
 
     // 2. Remoto
     try {
       await _supabaseClient.from('milestone_tasks').update({'is_completed': isCompleted}).eq('id', id);
+      await (_database.update(_database.milestoneTasks)..where((t) => t.id.equals(id)))
+          .write(const MilestoneTasksCompanion(isSynced: Value(true)));
     } catch (e) {
-      print('❌ Error al actualizar estado de tarea de milestone: $e');
+      print('❌ Error al actualizar estado de tarea de milestone: $e. Pendiente de sync.');
     }
   }
 
   Future<void> deleteMilestoneTask(String id) async {
+    // 1. Registrar borrado pendiente
+    await _database.into(_database.pendingSyncActions).insert(
+          PendingSyncActionsCompanion.insert(
+            localTable: 'milestone_tasks',
+            itemId: id,
+            action: 'DELETE',
+          ),
+        );
+
+    // 2. Local
     await (_database.delete(_database.milestoneTasks)..where((t) => t.id.equals(id))).go();
+
+    // 3. Remoto
     try {
       await _supabaseClient.from('milestone_tasks').delete().eq('id', id);
+      await (_database.delete(_database.pendingSyncActions)
+            ..where((t) => t.localTable.equals('milestone_tasks') & t.itemId.equals(id)))
+          .go();
     } catch (e) {
-      print('❌ Error al eliminar tarea de milestone: $e');
+      print('❌ Error al eliminar tarea de milestone: $e. Pendiente de sync.');
     }
   }
 }

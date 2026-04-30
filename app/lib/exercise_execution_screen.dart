@@ -67,15 +67,28 @@ class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScree
       // 2. Obtener Récord Histórico
       _historicalMaxSet = await repo.getHistoricalMaxWeight(widget.exerciseName);
 
-      // 3. Autocompletado (última sesión)
-      final lastSets = await repo.getLastWorkoutSets(widget.exerciseName);
+      // 3. Cargar sets de HOY (Persistencia live)
+      final todaySets = await repo.getSetsForLogAndExercise(_workoutLogId!, widget.exerciseName);
 
-      if (lastSets.isNotEmpty) {
-        _sets = lastSets
-            .map((s) => ExerciseSetDraft(weight: s.weight, reps: s.reps))
+      if (todaySets.isNotEmpty) {
+        _sets = todaySets
+            .map((s) => ExerciseSetDraft(
+                  id: s.id,
+                  weight: s.weight,
+                  reps: s.reps,
+                  isCompleted: true,
+                ))
             .toList();
       } else {
-        _sets = [ExerciseSetDraft(weight: 0, reps: 0)];
+        // 4. Si no hay nada hoy, cargamos autocompletado (última sesión)
+        final lastSets = await repo.getLastWorkoutSets(widget.exerciseName);
+        if (lastSets.isNotEmpty) {
+          _sets = lastSets
+              .map((s) => ExerciseSetDraft(weight: s.weight, reps: s.reps))
+              .toList();
+        } else {
+          _sets = [ExerciseSetDraft(weight: 0, reps: 0)];
+        }
       }
     } catch (e) {
       print('Error cargando ejercicio: $e');

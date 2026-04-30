@@ -59,6 +59,10 @@ class GymTemplatesNotifier extends _$GymTemplatesNotifier {
   }
 }
 
+final todayWorkoutSetsProvider = StreamProvider.family<List<WorkoutSet>, String>((ref, templateId) {
+  return ref.watch(gymRepositoryProvider).watchTodaySets(templateId);
+});
+
 // Pequeña utilidad para combinar streams de Drift
 class StreamQuery {
   static Stream<T> combine2<A, B, T>(

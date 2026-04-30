@@ -8,6 +8,7 @@ import 'package:app/widgets/create_task_modal.dart';
 import 'package:app/widgets/create_roadmap_modal.dart';
 import 'package:app/home_tab.dart';
 import 'package:app/gym_tab.dart';
+import 'package:app/sync_provider.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,14 +40,14 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MainNavigationScreen extends StatefulWidget {
+class MainNavigationScreen extends ConsumerStatefulWidget {
   const MainNavigationScreen({super.key});
 
   @override
-  State<MainNavigationScreen> createState() => _MainNavigationScreenState();
+  ConsumerState<MainNavigationScreen> createState() => _MainNavigationScreenState();
 }
 
-class _MainNavigationScreenState extends State<MainNavigationScreen> {
+class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
   int _currentIndex = 0;
 
   final List<Widget> _tabs = const [
@@ -61,6 +62,9 @@ class _MainNavigationScreenState extends State<MainNavigationScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // Iniciamos el servicio de sincronización en segundo plano
+    ref.watch(syncProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: Text(_titles[_currentIndex]),

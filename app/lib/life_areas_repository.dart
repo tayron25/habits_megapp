@@ -50,11 +50,26 @@ class LifeAreasRepository {
   }
 
   Future<void> deleteLifeArea(String id) async {
+    // 1. Registrar borrado pendiente
+    await _database.into(_database.pendingSyncActions).insert(
+          PendingSyncActionsCompanion.insert(
+            localTable: 'life_areas',
+            itemId: id,
+            action: 'DELETE',
+          ),
+        );
+
+    // 2. Local
     await (_database.delete(_database.lifeAreas)..where((a) => a.id.equals(id))).go();
+
+    // 3. Remoto
     try {
       await _supabaseClient.from('life_areas').delete().eq('id', id);
+      await (_database.delete(_database.pendingSyncActions)
+            ..where((t) => t.localTable.equals('life_areas') & t.itemId.equals(id)))
+          .go();
     } catch (e) {
-      print('❌ Error al eliminar LifeArea: $e');
+      print('❌ Error al eliminar LifeArea: $e. Pendiente de sync.');
     }
   }
 }

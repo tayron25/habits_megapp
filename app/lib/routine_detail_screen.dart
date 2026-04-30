@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/exercise_execution_screen.dart';
+import 'package:app/gym_provider.dart';
 
 class RoutineDetailScreen extends ConsumerWidget {
   final String templateId;
@@ -16,6 +17,8 @@ class RoutineDetailScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final todaySetsAsync = ref.watch(todayWorkoutSetsProvider(templateId));
+
     return Scaffold(
       appBar: AppBar(
         title: Text(templateName),
@@ -28,21 +31,40 @@ class RoutineDetailScreen extends ConsumerWidget {
         itemBuilder: (context, index) {
           final exName = exercises[index];
 
+          final isCompleted = todaySetsAsync.maybeWhen(
+            data: (sets) => sets.any((s) => s.exerciseName == exName),
+            orElse: () => false,
+          );
+
           return Card(
-            color: const Color(0xFF171717),
+            color: isCompleted ? Colors.green.withOpacity(0.05) : const Color(0xFF171717),
             margin: const EdgeInsets.only(bottom: 12),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(color: Color(0xFF262626)),
+              side: BorderSide(
+                color: isCompleted ? Colors.green.withOpacity(0.3) : const Color(0xFF262626),
+                width: isCompleted ? 2 : 1,
+              ),
             ),
             child: ListTile(
               contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+              leading: isCompleted 
+                ? const Icon(Icons.check_circle, color: Colors.greenAccent)
+                : Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: Colors.grey.withOpacity(0.5), width: 2),
+                    ),
+                  ),
               title: Text(
                 exName,
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
-                  color: Colors.white,
+                  color: isCompleted ? Colors.white70 : Colors.white,
+                  decoration: isCompleted ? TextDecoration.lineThrough : null,
                 ),
               ),
               trailing: const Icon(Icons.chevron_right, color: Colors.grey),

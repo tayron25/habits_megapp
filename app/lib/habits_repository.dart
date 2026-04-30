@@ -104,20 +104,37 @@ class HabitsRepository {
       return;
     }
 
-    await (_database.delete(_database.habitLogs)
+    // 1. Encontrar el log local para obtener su ID antes de borrarlo
+    final logToDelete = await (_database.select(_database.habitLogs)
           ..where(
             (log) => log.habitId.equals(habitId) & log.completedDate.equals(completedDate),
           ))
-        .go();
+        .getSingleOrNull();
 
-    try {
-      await _supabaseClient
-          .from('habit_logs')
-          .delete()
-          .eq('habit_id', habitId)
-          .eq('completed_date', completedDate.toIso8601String());
-    } catch (_) {
-      // Network errors are ignored so the local toggle-off still succeeds.
+    if (logToDelete != null) {
+      // 2. Registrar el borrado pendiente
+      await _database.into(_database.pendingSyncActions).insert(
+            PendingSyncActionsCompanion.insert(
+              localTable: 'habit_logs',
+              itemId: logToDelete.id,
+              action: 'DELETE',
+            ),
+          );
+
+      // 3. Borrado Local
+      await (_database.delete(_database.habitLogs)
+            ..where((log) => log.id.equals(logToDelete.id)))
+          .go();
+
+      // 4. Intento Remoto
+      try {
+        await _supabaseClient.from('habit_logs').delete().eq('id', logToDelete.id);
+        await (_database.delete(_database.pendingSyncActions)
+              ..where((t) => t.localTable.equals('habit_logs') & t.itemId.equals(logToDelete.id)))
+            .go();
+      } catch (_) {
+        print('Habit log borrado localmente. Pendiente de sync.');
+      }
     }
   }
 
