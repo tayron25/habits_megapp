@@ -33,14 +33,15 @@ La UI lee de la base de datos local usando Streams (`ref.watch`). Al crear/edita
 
 ## 🏗️ Estado Actual del Desarrollo
 
-El esquema actual de base de datos local (Drift) está en la **versión 8 (v8)** con 12 tablas operativas en el ecosistema:
+El esquema actual de base de datos local (Drift) está en la **versión 10 (v10)** con 13 tablas operativas en el ecosistema:
 
 - **Módulo Áreas de Vida:** Tabla `LifeAreas` (`id`, `name`, `icon`, `createdAt`, `isSynced`).
 - **Módulo Notas (Quick Captures):** Tabla `Notes` (`id`, `content`, `createdAt`, `isSynced`).
 - **Módulo Hábitos (V3):** Tablas `Habits` (avanzada con `startDate`, `endDate`, `repeatMode`, `goalAmount`, `goalPeriod`, `timeOfDay`, `lifeAreaId`) y `HabitLogs` (registro diario).
-- **Módulo Gimnasio:** Tablas `WorkoutTemplates` (plantillas), `TemplateExercises` (ejercicios), `WorkoutLogs` (sesión activa), y `WorkoutSets` (series/repeticiones).
+- **Módulo Gimnasio:** Tablas `WorkoutTemplates` (plantillas), `TemplateExercises` (ejercicios, incluye soporte a superseries con `supersetId`), `WorkoutLogs` (sesión activa), y `WorkoutSets` (series/repeticiones).
 - **Módulo Tareas (To-Do):** Tabla `Tasks` (`title`, `description`, `priority`, `dueDate`, `lifeAreaId`, `isCompleted`).
 - **Módulo Roadmaps (Metas Largo Plazo):** Tablas `Roadmaps` (meta global), `RoadmapMilestones` (hitos) y `MilestoneTasks` (checklist de hitos).
+- **Módulo de Sincronización:** Tabla `PendingSyncActions` (Cola de sincronización offline para gestionar eliminaciones y fallos de red).
 
 La interfaz gráfica principal (`main.dart` - Pantalla Hoy) está estructurada de forma vertical, mostrando únicamente la información relevante para **el día de hoy** (ej. los hábitos se filtran reactivamente para no mostrar los que expiran o no tocan hoy). El `FloatingActionButton` centraliza la creación de cualquier entidad mediante modales (`showModalBottomSheet`).
 
@@ -73,6 +74,12 @@ Espacio de "fricción cero" para capturar pensamientos al vuelo en texto plano.
 Gestor de proyectos macro.
 - Permite desglosar un objetivo en múltiples "Hitos" (Milestones).
 - Calcula el porcentaje de avance global en base a las tareas específicas de cada hito marcadas como completadas.
+
+### 6. Autenticación y Sincronización Multi-Tenant
+Arquitectura resiliente (Offline-first) con cuentas de usuario.
+- **Autenticación con Supabase:** Inicio de sesión y manejo de sesiones.
+- **Sincronización Estricta (Niveles):** El `Sync Pull` se ejecuta en 4 niveles para respetar forzosamente las claves foráneas en SQLite.
+- **Cola Offline:** Se utiliza `PendingSyncActions` para guardar acciones de eliminación (y otras) que ocurren sin conexión y reintentarlas al recuperar la red.
 
 ---
 

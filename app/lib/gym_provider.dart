@@ -5,6 +5,7 @@ import 'package:app/local_database.dart';
 import 'package:app/notes_provider.dart'; 
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:drift/drift.dart';
 
 part 'gym_provider.g.dart';
 
@@ -61,6 +62,23 @@ class GymTemplatesNotifier extends _$GymTemplatesNotifier {
 
 final todayWorkoutSetsProvider = StreamProvider.family<List<WorkoutSet>, String>((ref, templateId) {
   return ref.watch(gymRepositoryProvider).watchTodaySets(templateId);
+});
+
+final todayWorkoutLogProvider = StreamProvider<WorkoutLog?>((ref) {
+  final db = ref.watch(appDatabaseProvider);
+  final now = DateTime.now();
+  final todayStart = DateTime(now.year, now.month, now.day);
+  final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+  return (db.select(db.workoutLogs)..where(
+        (l) => l.date.isBetweenValues(todayStart, todayEnd),
+      ))
+      .watchSingleOrNull();
+});
+
+final workoutSetsByLogProvider = StreamProvider.family<List<WorkoutSet>, String>((ref, logId) {
+  final db = ref.watch(appDatabaseProvider);
+  return (db.select(db.workoutSets)..where((s) => s.workoutLogId.equals(logId))).watch();
 });
 
 // Pequeña utilidad para combinar streams de Drift

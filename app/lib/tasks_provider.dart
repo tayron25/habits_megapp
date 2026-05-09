@@ -44,6 +44,24 @@ class TasksNotifier extends _$TasksNotifier {
         );
   }
 
+  void updateTask(
+    String id, {
+    required String title,
+    String? description,
+    required String priority,
+    DateTime? dueDate,
+    String? lifeAreaId,
+  }) {
+    ref.read(tasksRepositoryProvider).updateTask(
+          id,
+          title: title,
+          description: description,
+          priority: priority,
+          dueDate: dueDate,
+          lifeAreaId: lifeAreaId,
+        );
+  }
+
   void toggleTask(String id, bool isCompleted) {
     ref.read(tasksRepositoryProvider).toggleTaskStatus(id, isCompleted);
   }

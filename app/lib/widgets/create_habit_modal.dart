@@ -1,3 +1,4 @@
+import 'package:app/local_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/habits_provider.dart';
@@ -5,7 +6,8 @@ import 'package:app/life_areas_provider.dart';
 import 'package:app/widgets/create_life_area_modal.dart';
 
 class CreateHabitModal extends ConsumerStatefulWidget {
-  const CreateHabitModal({super.key});
+  final Habit? existingHabit;
+  const CreateHabitModal({super.key, this.existingHabit});
 
   @override
   ConsumerState<CreateHabitModal> createState() => _CreateHabitModalState();
@@ -25,6 +27,29 @@ class _CreateHabitModalState extends ConsumerState<CreateHabitModal> {
   String _goalPeriod = 'week'; // 'day', 'week', 'month', 'year'
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.existingHabit != null) {
+      final h = widget.existingHabit!;
+      _nameController.text = h.name;
+      _goalAmountController.text = h.goalAmount.toString();
+      _selectedLifeAreaId = h.lifeAreaId;
+      _startDate = h.startDate;
+      _endDate = h.endDate;
+      _repeatMode = h.repeatMode;
+      _goalPeriod = h.goalPeriod;
+      
+      if (h.repeatMode == 'daily' && h.specificDays != null) {
+        _selectedDays.addAll(h.specificDays!.split(',').map((e) => int.parse(e)));
+      } else if (h.repeatMode == 'monthly' && h.specificDays != null) {
+        _selectedDays.addAll(h.specificDays!.split(',').map((e) => int.parse(e)));
+      } else if (h.repeatMode == 'interval' && h.specificDays != null) {
+        _intervalController.text = h.specificDays!;
+      }
+    }
+  }
+
+  @override
   void dispose() {
     _nameController.dispose();
     _goalAmountController.dispose();
@@ -35,6 +60,13 @@ class _CreateHabitModalState extends ConsumerState<CreateHabitModal> {
   void _handleSave() {
     final name = _nameController.text.trim();
     if (name.isEmpty) return;
+
+    if (_selectedLifeAreaId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, selecciona un Área de Vida.')),
+      );
+      return;
+    }
 
     final goalAmount = int.tryParse(_goalAmountController.text.trim()) ?? 1;
     if (goalAmount <= 0) return;
@@ -49,17 +81,32 @@ class _CreateHabitModalState extends ConsumerState<CreateHabitModal> {
       specificDaysStr = interval.toString();
     }
 
-    ref.read(habitsProvider.notifier).addHabit(
-          name: name,
-          startDate: _startDate,
-          endDate: _endDate,
-          repeatMode: _repeatMode,
-          specificDays: specificDaysStr,
-          goalAmount: goalAmount,
-          goalPeriod: _goalPeriod,
-          timeOfDay: null,
-          lifeAreaId: _selectedLifeAreaId,
-        );
+    if (widget.existingHabit == null) {
+      ref.read(habitsProvider.notifier).addHabit(
+            name: name,
+            startDate: _startDate,
+            endDate: _endDate,
+            repeatMode: _repeatMode,
+            specificDays: specificDaysStr,
+            goalAmount: goalAmount,
+            goalPeriod: _goalPeriod,
+            timeOfDay: null,
+            lifeAreaId: _selectedLifeAreaId,
+          );
+    } else {
+      ref.read(habitsProvider.notifier).updateHabit(
+            widget.existingHabit!.id,
+            name: name,
+            startDate: _startDate,
+            endDate: _endDate,
+            repeatMode: _repeatMode,
+            specificDays: specificDaysStr,
+            goalAmount: goalAmount,
+            goalPeriod: _goalPeriod,
+            timeOfDay: null,
+            lifeAreaId: _selectedLifeAreaId,
+          );
+    }
     
     Navigator.pop(context);
   }
@@ -120,7 +167,7 @@ class _CreateHabitModalState extends ConsumerState<CreateHabitModal> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text('Nuevo Hábito', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
+                    Text(widget.existingHabit == null ? 'Nuevo Hábito' : 'Editar Hábito', style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold), textAlign: TextAlign.center),
                     const SizedBox(height: 16),
                 
                 // 1. Nombre
@@ -207,7 +254,7 @@ class _CreateHabitModalState extends ConsumerState<CreateHabitModal> {
                       foregroundColor: colors.onPrimary,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                    child: const Text('Crear Hábito', style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: Text(widget.existingHabit == null ? 'Crear Hábito' : 'Actualizar Hábito', style: const TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],

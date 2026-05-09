@@ -86,6 +86,7 @@ class TemplateExercises extends Table {
   TextColumn get templateId => text()();
   TextColumn get muscleGroup => text()();
   TextColumn get exerciseName => text()();
+  TextColumn get supersetId => text().nullable()();
   DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
   BoolColumn get isSynced => boolean().clientDefault(() => false)();
 
@@ -195,7 +196,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 9;
+  int get schemaVersion => 10;
 
   @override
   MigrationStrategy get migration {
@@ -248,6 +249,10 @@ class AppDatabase extends _$AppDatabase {
         // Migración para la Versión 9 (Sync Queue)
         if (from < 9) {
           await m.createTable(pendingSyncActions);
+        }
+        // Migración para la Versión 10 (Supersets)
+        if (from < 10) {
+          await m.addColumn(templateExercises, templateExercises.supersetId);
         }
       },
       beforeOpen: (details) async {

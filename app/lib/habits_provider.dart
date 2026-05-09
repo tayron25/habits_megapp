@@ -17,10 +17,14 @@ class HabitWithStatus {
   const HabitWithStatus({
     required this.habit,
     required this.isCompletedToday,
+    required this.currentProgress,
+    required this.isGoalMet,
   });
 
   final Habit habit;
   final bool isCompletedToday;
+  final int currentProgress;
+  final bool isGoalMet;
 }
 
 
@@ -66,12 +70,42 @@ class HabitsNotifier extends _$HabitsNotifier {
         );
   }
 
+  void updateHabit(
+    String id, {
+    required String name,
+    required DateTime startDate,
+    DateTime? endDate,
+    required String repeatMode,
+    String? specificDays,
+    required int goalAmount,
+    required String goalPeriod,
+    String? timeOfDay,
+    String? lifeAreaId,
+  }) {
+    ref.read(habitsRepositoryProvider).updateHabit(
+          id,
+          name: name,
+          startDate: startDate,
+          endDate: endDate,
+          repeatMode: repeatMode,
+          specificDays: specificDays,
+          goalAmount: goalAmount,
+          goalPeriod: goalPeriod,
+          timeOfDay: timeOfDay,
+          lifeAreaId: lifeAreaId,
+        );
+  }
+
   void toggleHabit(String habitId, bool isCompleted) {
     ref.read(habitsRepositoryProvider).toggleHabitCompletion(
           habitId,
           DateTime.now(),
           isCompleted,
         );
+  }
+
+  void removeHabit(String habitId) {
+    ref.read(habitsRepositoryProvider).deleteHabit(habitId);
   }
 
   Stream<HabitWithStatusList> _watchHabitStatuses(AppDatabase database) {
@@ -84,53 +118,81 @@ class HabitsNotifier extends _$HabitsNotifier {
       late final StreamSubscription<List<Habit>> habitsSubscription;
       late final StreamSubscription<List<HabitLog>> habitLogsSubscription;
 
-      void emitCurrentState() {
+      void emitCurrentState() async {
         if (!habitsLoaded || !logsLoaded) {
           return;
         }
 
         final today = _normalizeDate(DateTime.now());
         final todayWeekday = DateTime.now().weekday; // 1=Mon, 7=Sun
+        final repo = ref.read(habitsRepositoryProvider);
 
-        final combined = currentHabits
-            .where((habit) {
-              // 1. Validar fechas de inicio y fin
-              final habitStart = _normalizeDate(habit.startDate);
-              if (today.isBefore(habitStart)) return false;
+        final List<HabitWithStatus> combined = [];
 
-              if (habit.endDate != null) {
-                final habitEnd = _normalizeDate(habit.endDate!);
-                if (today.isAfter(habitEnd)) return false;
-              }
+        for (final habit in currentHabits) {
+          // 1. Validar fechas de inicio y fin
+          final habitStart = _normalizeDate(habit.startDate);
+          if (today.isBefore(habitStart)) continue;
 
-              // 2. Validar frecuencia
-              if (habit.repeatMode == 'daily' && habit.specificDays != null) {
-                final days = habit.specificDays!.split(',');
-                // If the days list isn't empty and doesn't contain today, filter it out.
-                // We map Sunday (7) to specificDays since the UI creates comma-separated string '1,2,3,4,5,6,7'
-                if (days.isNotEmpty && !days.contains(todayWeekday.toString())) return false;
-              } else if (habit.repeatMode == 'monthly' && habit.specificDays != null) {
-                final days = habit.specificDays!.split(',');
-                if (days.isNotEmpty && !days.contains(today.day.toString())) return false;
-              } else if (habit.repeatMode == 'interval' && habit.specificDays != null) {
-                final interval = int.tryParse(habit.specificDays!) ?? 1;
-                final diff = today.difference(habitStart).inDays;
-                if (diff % interval != 0) return false;
-              }
+          if (habit.endDate != null) {
+            final habitEnd = _normalizeDate(habit.endDate!);
+            if (today.isAfter(habitEnd)) continue;
+          }
 
-              return true;
-            })
-            .map(
-              (habit) => HabitWithStatus(
-                habit: habit,
-                isCompletedToday: currentHabitLogs.any(
-                  (habitLog) =>
-                      habitLog.habitId == habit.id &&
-                      _isSameDay(habitLog.completedDate, today),
-                ),
-              ),
-            )
-            .toList();
+          // 2. Validar frecuencia
+          if (habit.repeatMode == 'daily' && habit.specificDays != null) {
+            final days = habit.specificDays!.split(',');
+            if (days.isNotEmpty && !days.contains(todayWeekday.toString())) continue;
+          } else if (habit.repeatMode == 'monthly' && habit.specificDays != null) {
+            final days = habit.specificDays!.split(',');
+            if (days.isNotEmpty && !days.contains(today.day.toString())) continue;
+          } else if (habit.repeatMode == 'interval' && habit.specificDays != null) {
+            final interval = int.tryParse(habit.specificDays!) ?? 1;
+            final diff = today.difference(habitStart).inDays;
+            if (diff % interval != 0) continue;
+          }
+
+          // 3. Calcular rango de fechas para el periodo actual
+          DateTime start;
+          DateTime end;
+          final now = DateTime.now();
+
+          switch (habit.goalPeriod) {
+            case 'week':
+              final monday = now.subtract(Duration(days: now.weekday - 1));
+              start = _normalizeDate(monday);
+              end = DateTime(start.year, start.month, start.day).add(const Duration(days: 6, hours: 23, minutes: 59, seconds: 59));
+              break;
+            case 'month':
+              start = DateTime(now.year, now.month, 1);
+              final nextMonth = DateTime(now.year, now.month + 1, 1);
+              end = nextMonth.subtract(const Duration(seconds: 1));
+              break;
+            case 'year':
+              start = DateTime(now.year, 1, 1);
+              end = DateTime(now.year, 12, 31, 23, 59, 59);
+              break;
+            case 'day':
+            default:
+              start = _normalizeDate(now);
+              end = DateTime(now.year, now.month, now.day, 23, 59, 59);
+              break;
+          }
+
+          // Obtener progreso usando el repositorio según las instrucciones
+          int progress = await repo.getHabitLogsCountForPeriod(habit.id, start, end);
+
+          combined.add(HabitWithStatus(
+            habit: habit,
+            isCompletedToday: currentHabitLogs.any(
+              (habitLog) =>
+                  habitLog.habitId == habit.id &&
+                  _isSameDay(habitLog.completedDate, today),
+            ),
+            currentProgress: progress,
+            isGoalMet: progress >= habit.goalAmount,
+          ));
+        }
 
         combined.sort((a, b) {
           if (a.isCompletedToday && !b.isCompletedToday) return 1;

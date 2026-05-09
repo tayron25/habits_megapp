@@ -47,16 +47,17 @@ class HabitsRepository {
       await _supabaseClient.from('habits').insert({
         'id': id,
         'name': name,
-        'start_date': startDate.toIso8601String(),
-        'end_date': endDate?.toIso8601String(),
+        'start_date': startDate.toUtc().toIso8601String(),
+        'end_date': endDate?.toUtc().toIso8601String(),
         'repeat_mode': repeatMode,
         'specific_days': specificDays,
         'goal_amount': goalAmount,
         'goal_period': goalPeriod,
         'time_of_day': timeOfDay,
         'life_area_id': lifeAreaId,
-        'created_at': DateTime.now().toIso8601String(),
+        'created_at': DateTime.now().toUtc().toIso8601String(),
         'is_synced': true,
+        'user_id': _supabaseClient.auth.currentUser?.id,
       });
 
       await (_database.update(_database.habits)..where((habit) => habit.id.equals(id)))
@@ -64,6 +65,54 @@ class HabitsRepository {
     } catch (_) {
       // Network errors are ignored so the local habit remains available offline.
     }
+  }
+
+  Future<void> updateHabit(
+    String id, {
+    required String name,
+    required DateTime startDate,
+    DateTime? endDate,
+    required String repeatMode,
+    String? specificDays,
+    required int goalAmount,
+    required String goalPeriod,
+    String? timeOfDay,
+    String? lifeAreaId,
+  }) async {
+    // Local
+    await (_database.update(_database.habits)..where((h) => h.id.equals(id))).write(
+      HabitsCompanion(
+        name: Value(name),
+        startDate: Value(startDate),
+        endDate: Value(endDate),
+        repeatMode: Value(repeatMode),
+        specificDays: Value(specificDays),
+        goalAmount: Value(goalAmount),
+        goalPeriod: Value(goalPeriod),
+        timeOfDay: Value(timeOfDay),
+        lifeAreaId: Value(lifeAreaId),
+        isSynced: const Value(false),
+      ),
+    );
+
+    // Remoto
+    try {
+      await _supabaseClient.from('habits').update({
+        'name': name,
+        'start_date': startDate.toUtc().toIso8601String(),
+        'end_date': endDate?.toUtc().toIso8601String(),
+        'repeat_mode': repeatMode,
+        'specific_days': specificDays,
+        'goal_amount': goalAmount,
+        'goal_period': goalPeriod,
+        'time_of_day': timeOfDay,
+        'life_area_id': lifeAreaId,
+        'is_synced': true,
+      }).eq('id', id);
+
+      await (_database.update(_database.habits)..where((h) => h.id.equals(id)))
+          .write(const HabitsCompanion(isSynced: Value(true)));
+    } catch (_) {}
   }
 
   Future<void> toggleHabitCompletion(
@@ -89,8 +138,9 @@ class HabitsRepository {
         await _supabaseClient.from('habit_logs').insert({
           'id': logId,
           'habit_id': habitId,
-          'completed_date': completedDate.toIso8601String(),
+          'completed_date': completedDate.toUtc().toIso8601String(),
           'is_synced': false,
+          'user_id': _supabaseClient.auth.currentUser?.id,
         });
 
         await (_database.update(_database.habitLogs)
@@ -138,7 +188,41 @@ class HabitsRepository {
     }
   }
 
+  Future<int> getHabitLogsCountForPeriod(String habitId, DateTime start, DateTime end) async {
+    final startNormalized = _normalizeDate(start);
+    final endNormalized = DateTime(end.year, end.month, end.day, 23, 59, 59);
+
+    final countExpression = _database.habitLogs.id.count();
+    final query = _database.selectOnly(_database.habitLogs)
+      ..addColumns([countExpression])
+      ..where(_database.habitLogs.habitId.equals(habitId) &
+          _database.habitLogs.completedDate.isBetweenValues(startNormalized, endNormalized));
+
+    final result = await query.map((row) => row.read(countExpression)).getSingle();
+    return result ?? 0;
+  }
+
   DateTime _normalizeDate(DateTime date) {
     return DateTime(date.year, date.month, date.day);
+  }
+
+  Future<void> deleteHabit(String id) async {
+    await _database.into(_database.pendingSyncActions).insert(
+          PendingSyncActionsCompanion.insert(
+            localTable: 'habits',
+            itemId: id,
+            action: 'DELETE',
+          ),
+        );
+
+    await (_database.delete(_database.habits)..where((h) => h.id.equals(id))).go();
+
+    try {
+      await _supabaseClient.from('habits').delete().eq('id', id);
+      await (_database.delete(_database.pendingSyncActions)
+            ..where((t) => t.localTable.equals('habits') & t.itemId.equals(id)))
+          .go();
+    } catch (_) {
+    }
   }
 }

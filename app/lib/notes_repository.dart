@@ -35,6 +35,7 @@ class NotesRepository {
         'content': text,
         'created_at': createdAt.toIso8601String(),
         'is_synced': false,
+        'user_id': _supabaseClient.auth.currentUser?.id,
       });
 
       await (_database.update(_database.notes)
@@ -43,6 +44,29 @@ class NotesRepository {
     } catch (e, stack) {
       print('❌ Error de sincronización con Supabase: $e');
       print('🔍 Stacktrace: $stack');
+    }
+  }
+
+  Future<void> updateNote(String id, String text) async {
+    // Local
+    await (_database.update(_database.notes)..where((n) => n.id.equals(id))).write(
+      NotesCompanion(
+        content: Value(text),
+        isSynced: const Value(false),
+      ),
+    );
+
+    // Remoto
+    try {
+      await _supabaseClient.from('notes').update({
+        'content': text,
+        'is_synced': true,
+      }).eq('id', id);
+
+      await (_database.update(_database.notes)..where((n) => n.id.equals(id)))
+          .write(const NotesCompanion(isSynced: Value(true)));
+    } catch (e) {
+      print('❌ Error de sync al actualizar nota: $e');
     }
   }
 

@@ -1,3 +1,4 @@
+import 'package:app/local_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/tasks_provider.dart';
@@ -5,7 +6,8 @@ import 'package:app/life_areas_provider.dart';
 import 'package:app/widgets/create_life_area_modal.dart';
 
 class CreateTaskModal extends ConsumerStatefulWidget {
-  const CreateTaskModal({super.key});
+  final Task? existingTask;
+  const CreateTaskModal({super.key, this.existingTask});
 
   @override
   ConsumerState<CreateTaskModal> createState() => _CreateTaskModalState();
@@ -20,6 +22,19 @@ class _CreateTaskModalState extends ConsumerState<CreateTaskModal> {
   String? _selectedLifeAreaId;
 
   @override
+  void initState() {
+    super.initState();
+    if (widget.existingTask != null) {
+      final t = widget.existingTask!;
+      _titleController.text = t.title;
+      _descController.text = t.description ?? '';
+      _selectedPriority = t.priority;
+      _selectedDate = t.dueDate;
+      _selectedLifeAreaId = t.lifeAreaId;
+    }
+  }
+
+  @override
   void dispose() {
     _titleController.dispose();
     _descController.dispose();
@@ -30,15 +45,33 @@ class _CreateTaskModalState extends ConsumerState<CreateTaskModal> {
     final title = _titleController.text.trim();
     if (title.isEmpty) return;
 
+    if (_selectedLifeAreaId == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Por favor, selecciona un Área de Vida.')),
+      );
+      return;
+    }
+
     final desc = _descController.text.trim();
 
-    ref.read(tasksProvider.notifier).addTask(
-          title: title,
-          description: desc.isEmpty ? null : desc,
-          priority: _selectedPriority,
-          dueDate: _selectedDate,
-          lifeAreaId: _selectedLifeAreaId,
-        );
+    if (widget.existingTask == null) {
+      ref.read(tasksProvider.notifier).addTask(
+            title: title,
+            description: desc.isEmpty ? null : desc,
+            priority: _selectedPriority,
+            dueDate: _selectedDate,
+            lifeAreaId: _selectedLifeAreaId,
+          );
+    } else {
+      ref.read(tasksProvider.notifier).updateTask(
+            widget.existingTask!.id,
+            title: title,
+            description: desc.isEmpty ? null : desc,
+            priority: _selectedPriority,
+            dueDate: _selectedDate,
+            lifeAreaId: _selectedLifeAreaId,
+          );
+    }
 
     Navigator.pop(context);
   }
@@ -46,8 +79,8 @@ class _CreateTaskModalState extends ConsumerState<CreateTaskModal> {
   Future<void> _pickDate() async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime.now(),
+      initialDate: _selectedDate ?? DateTime.now(),
+      firstDate: DateTime(2020),
       lastDate: DateTime(2030),
       builder: (context, child) {
         return Theme(
@@ -104,9 +137,9 @@ class _CreateTaskModalState extends ConsumerState<CreateTaskModal> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text(
-                      'Nueva Tarea',
-                      style: TextStyle(
+                    Text(
+                      widget.existingTask == null ? 'Nueva Tarea' : 'Editar Tarea',
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -233,7 +266,7 @@ class _CreateTaskModalState extends ConsumerState<CreateTaskModal> {
                       foregroundColor: colors.onPrimary,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
-                    child: const Text('Crear Tarea', style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: Text(widget.existingTask == null ? 'Crear Tarea' : 'Actualizar Tarea', style: const TextStyle(fontWeight: FontWeight.bold)),
                   ),
                 ),
               ],

@@ -71,6 +71,7 @@ class SyncRepository {
           'id': item.id,
           'content': item.content,
           'created_at': item.createdAt.toIso8601String(),
+          'user_id': _supabase.auth.currentUser?.id,
         });
         await (_database.update(_database.notes)
               ..where((t) => t.id.equals(item.id)))
@@ -96,6 +97,7 @@ class SyncRepository {
           'life_area_id': item.lifeAreaId,
           'is_completed': item.isCompleted,
           'created_at': item.createdAt.toIso8601String(),
+          'user_id': _supabase.auth.currentUser?.id,
         });
         await (_database.update(_database.tasks)
               ..where((t) => t.id.equals(item.id)))
@@ -117,6 +119,7 @@ class SyncRepository {
           'name': item.name,
           'icon': item.icon,
           'created_at': item.createdAt.toIso8601String(),
+          'user_id': _supabase.auth.currentUser?.id,
         });
         await (_database.update(_database.lifeAreas)
               ..where((t) => t.id.equals(item.id)))
@@ -145,6 +148,7 @@ class SyncRepository {
           'time_of_day': item.timeOfDay,
           'life_area_id': item.lifeAreaId,
           'created_at': item.createdAt.toIso8601String(),
+          'user_id': _supabase.auth.currentUser?.id,
         });
         await (_database.update(_database.habits)
               ..where((t) => t.id.equals(item.id)))
@@ -165,6 +169,7 @@ class SyncRepository {
           'id': item.id,
           'habit_id': item.habitId,
           'completed_date': item.completedDate.toIso8601String(),
+          'user_id': _supabase.auth.currentUser?.id,
         });
         await (_database.update(_database.habitLogs)
               ..where((t) => t.id.equals(item.id)))
@@ -185,6 +190,7 @@ class SyncRepository {
           'id': item.id,
           'name': item.name,
           'created_at': item.createdAt.toIso8601String(),
+          'user_id': _supabase.auth.currentUser?.id,
         });
         await (_database.update(_database.workoutTemplates)
               ..where((t) => t.id.equals(item.id)))
@@ -207,6 +213,7 @@ class SyncRepository {
           'muscle_group': item.muscleGroup,
           'exercise_name': item.exerciseName,
           'created_at': item.createdAt.toIso8601String(),
+          'user_id': _supabase.auth.currentUser?.id,
         });
         await (_database.update(_database.templateExercises)
               ..where((t) => t.templateId.equals(item.templateId)))
@@ -227,6 +234,7 @@ class SyncRepository {
           'id': item.id,
           'template_id': item.templateId,
           'date': item.date.toIso8601String(),
+          'user_id': _supabase.auth.currentUser?.id,
         });
         await (_database.update(_database.workoutLogs)
               ..where((t) => t.id.equals(item.id)))
@@ -250,6 +258,7 @@ class SyncRepository {
           'weight': item.weight,
           'reps': item.reps,
           'created_at': item.createdAt?.toIso8601String(),
+          'user_id': _supabase.auth.currentUser?.id,
         });
         await (_database.update(_database.workoutSets)
               ..where((t) => t.id.equals(item.id)))
@@ -271,6 +280,7 @@ class SyncRepository {
           'title': item.title,
           'description': item.description,
           'created_at': item.createdAt.toIso8601String(),
+          'user_id': _supabase.auth.currentUser?.id,
         });
         await (_database.update(_database.roadmaps)
               ..where((t) => t.id.equals(item.id)))
@@ -292,6 +302,7 @@ class SyncRepository {
           'roadmap_id': item.roadmapId,
           'title': item.title,
           'created_at': item.createdAt.toIso8601String(),
+          'user_id': _supabase.auth.currentUser?.id,
         });
         await (_database.update(_database.roadmapMilestones)
               ..where((t) => t.id.equals(item.id)))
@@ -314,6 +325,7 @@ class SyncRepository {
           'title': item.title,
           'is_completed': item.isCompleted,
           'created_at': item.createdAt.toIso8601String(),
+          'user_id': _supabase.auth.currentUser?.id,
         });
         await (_database.update(_database.milestoneTasks)
               ..where((t) => t.id.equals(item.id)))

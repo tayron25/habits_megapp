@@ -87,6 +87,10 @@ class RoadmapsNotifier extends _$RoadmapsNotifier {
     ref.read(roadmapsRepositoryProvider).createRoadmap(title: title, description: description);
   }
 
+  void updateRoadmap(String id, String title, String? description) {
+    ref.read(roadmapsRepositoryProvider).updateRoadmap(id, title: title, description: description);
+  }
+
   void deleteRoadmap(String id) {
     ref.read(roadmapsRepositoryProvider).deleteRoadmap(id);
   }

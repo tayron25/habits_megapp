@@ -2147,6 +2147,17 @@ class $TemplateExercisesTable extends TemplateExercises
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _supersetIdMeta = const VerificationMeta(
+    'supersetId',
+  );
+  @override
+  late final GeneratedColumn<String> supersetId = GeneratedColumn<String>(
+    'superset_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -2180,6 +2191,7 @@ class $TemplateExercisesTable extends TemplateExercises
     templateId,
     muscleGroup,
     exerciseName,
+    supersetId,
     createdAt,
     isSynced,
   ];
@@ -2230,6 +2242,12 @@ class $TemplateExercisesTable extends TemplateExercises
     } else if (isInserting) {
       context.missing(_exerciseNameMeta);
     }
+    if (data.containsKey('superset_id')) {
+      context.handle(
+        _supersetIdMeta,
+        supersetId.isAcceptableOrUnknown(data['superset_id']!, _supersetIdMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -2267,6 +2285,10 @@ class $TemplateExercisesTable extends TemplateExercises
         DriftSqlType.string,
         data['${effectivePrefix}exercise_name'],
       )!,
+      supersetId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}superset_id'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -2290,6 +2312,7 @@ class TemplateExercise extends DataClass
   final String templateId;
   final String muscleGroup;
   final String exerciseName;
+  final String? supersetId;
   final DateTime createdAt;
   final bool isSynced;
   const TemplateExercise({
@@ -2297,6 +2320,7 @@ class TemplateExercise extends DataClass
     required this.templateId,
     required this.muscleGroup,
     required this.exerciseName,
+    this.supersetId,
     required this.createdAt,
     required this.isSynced,
   });
@@ -2307,6 +2331,9 @@ class TemplateExercise extends DataClass
     map['template_id'] = Variable<String>(templateId);
     map['muscle_group'] = Variable<String>(muscleGroup);
     map['exercise_name'] = Variable<String>(exerciseName);
+    if (!nullToAbsent || supersetId != null) {
+      map['superset_id'] = Variable<String>(supersetId);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['is_synced'] = Variable<bool>(isSynced);
     return map;
@@ -2318,6 +2345,9 @@ class TemplateExercise extends DataClass
       templateId: Value(templateId),
       muscleGroup: Value(muscleGroup),
       exerciseName: Value(exerciseName),
+      supersetId: supersetId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(supersetId),
       createdAt: Value(createdAt),
       isSynced: Value(isSynced),
     );
@@ -2333,6 +2363,7 @@ class TemplateExercise extends DataClass
       templateId: serializer.fromJson<String>(json['templateId']),
       muscleGroup: serializer.fromJson<String>(json['muscleGroup']),
       exerciseName: serializer.fromJson<String>(json['exerciseName']),
+      supersetId: serializer.fromJson<String?>(json['supersetId']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
     );
@@ -2345,6 +2376,7 @@ class TemplateExercise extends DataClass
       'templateId': serializer.toJson<String>(templateId),
       'muscleGroup': serializer.toJson<String>(muscleGroup),
       'exerciseName': serializer.toJson<String>(exerciseName),
+      'supersetId': serializer.toJson<String?>(supersetId),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'isSynced': serializer.toJson<bool>(isSynced),
     };
@@ -2355,6 +2387,7 @@ class TemplateExercise extends DataClass
     String? templateId,
     String? muscleGroup,
     String? exerciseName,
+    Value<String?> supersetId = const Value.absent(),
     DateTime? createdAt,
     bool? isSynced,
   }) => TemplateExercise(
@@ -2362,6 +2395,7 @@ class TemplateExercise extends DataClass
     templateId: templateId ?? this.templateId,
     muscleGroup: muscleGroup ?? this.muscleGroup,
     exerciseName: exerciseName ?? this.exerciseName,
+    supersetId: supersetId.present ? supersetId.value : this.supersetId,
     createdAt: createdAt ?? this.createdAt,
     isSynced: isSynced ?? this.isSynced,
   );
@@ -2377,6 +2411,9 @@ class TemplateExercise extends DataClass
       exerciseName: data.exerciseName.present
           ? data.exerciseName.value
           : this.exerciseName,
+      supersetId: data.supersetId.present
+          ? data.supersetId.value
+          : this.supersetId,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
     );
@@ -2389,6 +2426,7 @@ class TemplateExercise extends DataClass
           ..write('templateId: $templateId, ')
           ..write('muscleGroup: $muscleGroup, ')
           ..write('exerciseName: $exerciseName, ')
+          ..write('supersetId: $supersetId, ')
           ..write('createdAt: $createdAt, ')
           ..write('isSynced: $isSynced')
           ..write(')'))
@@ -2401,6 +2439,7 @@ class TemplateExercise extends DataClass
     templateId,
     muscleGroup,
     exerciseName,
+    supersetId,
     createdAt,
     isSynced,
   );
@@ -2412,6 +2451,7 @@ class TemplateExercise extends DataClass
           other.templateId == this.templateId &&
           other.muscleGroup == this.muscleGroup &&
           other.exerciseName == this.exerciseName &&
+          other.supersetId == this.supersetId &&
           other.createdAt == this.createdAt &&
           other.isSynced == this.isSynced);
 }
@@ -2421,6 +2461,7 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
   final Value<String> templateId;
   final Value<String> muscleGroup;
   final Value<String> exerciseName;
+  final Value<String?> supersetId;
   final Value<DateTime> createdAt;
   final Value<bool> isSynced;
   final Value<int> rowid;
@@ -2429,6 +2470,7 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
     this.templateId = const Value.absent(),
     this.muscleGroup = const Value.absent(),
     this.exerciseName = const Value.absent(),
+    this.supersetId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.isSynced = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -2438,6 +2480,7 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
     required String templateId,
     required String muscleGroup,
     required String exerciseName,
+    this.supersetId = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.isSynced = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -2450,6 +2493,7 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
     Expression<String>? templateId,
     Expression<String>? muscleGroup,
     Expression<String>? exerciseName,
+    Expression<String>? supersetId,
     Expression<DateTime>? createdAt,
     Expression<bool>? isSynced,
     Expression<int>? rowid,
@@ -2459,6 +2503,7 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
       if (templateId != null) 'template_id': templateId,
       if (muscleGroup != null) 'muscle_group': muscleGroup,
       if (exerciseName != null) 'exercise_name': exerciseName,
+      if (supersetId != null) 'superset_id': supersetId,
       if (createdAt != null) 'created_at': createdAt,
       if (isSynced != null) 'is_synced': isSynced,
       if (rowid != null) 'rowid': rowid,
@@ -2470,6 +2515,7 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
     Value<String>? templateId,
     Value<String>? muscleGroup,
     Value<String>? exerciseName,
+    Value<String?>? supersetId,
     Value<DateTime>? createdAt,
     Value<bool>? isSynced,
     Value<int>? rowid,
@@ -2479,6 +2525,7 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
       templateId: templateId ?? this.templateId,
       muscleGroup: muscleGroup ?? this.muscleGroup,
       exerciseName: exerciseName ?? this.exerciseName,
+      supersetId: supersetId ?? this.supersetId,
       createdAt: createdAt ?? this.createdAt,
       isSynced: isSynced ?? this.isSynced,
       rowid: rowid ?? this.rowid,
@@ -2500,6 +2547,9 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
     if (exerciseName.present) {
       map['exercise_name'] = Variable<String>(exerciseName.value);
     }
+    if (supersetId.present) {
+      map['superset_id'] = Variable<String>(supersetId.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -2519,6 +2569,7 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
           ..write('templateId: $templateId, ')
           ..write('muscleGroup: $muscleGroup, ')
           ..write('exerciseName: $exerciseName, ')
+          ..write('supersetId: $supersetId, ')
           ..write('createdAt: $createdAt, ')
           ..write('isSynced: $isSynced, ')
           ..write('rowid: $rowid')
@@ -6529,6 +6580,7 @@ typedef $$TemplateExercisesTableCreateCompanionBuilder =
       required String templateId,
       required String muscleGroup,
       required String exerciseName,
+      Value<String?> supersetId,
       Value<DateTime> createdAt,
       Value<bool> isSynced,
       Value<int> rowid,
@@ -6539,6 +6591,7 @@ typedef $$TemplateExercisesTableUpdateCompanionBuilder =
       Value<String> templateId,
       Value<String> muscleGroup,
       Value<String> exerciseName,
+      Value<String?> supersetId,
       Value<DateTime> createdAt,
       Value<bool> isSynced,
       Value<int> rowid,
@@ -6570,6 +6623,11 @@ class $$TemplateExercisesTableFilterComposer
 
   ColumnFilters<String> get exerciseName => $composableBuilder(
     column: $table.exerciseName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get supersetId => $composableBuilder(
+    column: $table.supersetId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6613,6 +6671,11 @@ class $$TemplateExercisesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get supersetId => $composableBuilder(
+    column: $table.supersetId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -6648,6 +6711,11 @@ class $$TemplateExercisesTableAnnotationComposer
 
   GeneratedColumn<String> get exerciseName => $composableBuilder(
     column: $table.exerciseName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get supersetId => $composableBuilder(
+    column: $table.supersetId,
     builder: (column) => column,
   );
 
@@ -6702,6 +6770,7 @@ class $$TemplateExercisesTableTableManager
                 Value<String> templateId = const Value.absent(),
                 Value<String> muscleGroup = const Value.absent(),
                 Value<String> exerciseName = const Value.absent(),
+                Value<String?> supersetId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -6710,6 +6779,7 @@ class $$TemplateExercisesTableTableManager
                 templateId: templateId,
                 muscleGroup: muscleGroup,
                 exerciseName: exerciseName,
+                supersetId: supersetId,
                 createdAt: createdAt,
                 isSynced: isSynced,
                 rowid: rowid,
@@ -6720,6 +6790,7 @@ class $$TemplateExercisesTableTableManager
                 required String templateId,
                 required String muscleGroup,
                 required String exerciseName,
+                Value<String?> supersetId = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -6728,6 +6799,7 @@ class $$TemplateExercisesTableTableManager
                 templateId: templateId,
                 muscleGroup: muscleGroup,
                 exerciseName: exerciseName,
+                supersetId: supersetId,
                 createdAt: createdAt,
                 isSynced: isSynced,
                 rowid: rowid,

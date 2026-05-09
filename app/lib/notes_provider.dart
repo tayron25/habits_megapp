@@ -38,6 +38,10 @@ class NotesNotifier extends _$NotesNotifier {
     ref.read(notesRepositoryProvider).saveNote(content);
   }
 
+  void updateNote(String id, String content) {
+    ref.read(notesRepositoryProvider).updateNote(id, content);
+  }
+
   void removeNote(String id) {
     ref.read(notesRepositoryProvider).deleteNote(id);
   }

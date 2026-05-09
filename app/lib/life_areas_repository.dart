@@ -40,6 +40,7 @@ class LifeAreasRepository {
         'icon': icon,
         'created_at': now.toIso8601String(),
         'is_synced': true,
+        'user_id': _supabaseClient.auth.currentUser?.id,
       });
 
       await (_database.update(_database.lifeAreas)..where((a) => a.id.equals(id)))

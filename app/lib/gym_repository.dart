@@ -48,6 +48,7 @@ class GymRepository {
               templateId: templateId,
               muscleGroup: exercise['muscle_group']!,
               exerciseName: exercise['exercise_name']!,
+              supersetId: Value(exercise['superset_id']),
               createdAt: Value(createdAt),
               isSynced: const Value(false),
             ),
@@ -59,8 +60,10 @@ class GymRepository {
         'template_id': templateId,
         'muscle_group': exercise['muscle_group'],
         'exercise_name': exercise['exercise_name'],
+        'superset_id': exercise['superset_id'],
         'created_at': createdAt.toIso8601String(),
         'is_synced': false,
+        'user_id': _supabaseClient.auth.currentUser?.id,
       });
     }
 
@@ -72,6 +75,7 @@ class GymRepository {
         'name': name,
         'created_at': createdAt.toIso8601String(),
         'is_synced': false,
+        'user_id': _supabaseClient.auth.currentUser?.id,
       });
 
       // Subimos todos los ejercicios de golpe
@@ -142,6 +146,7 @@ class GymRepository {
         'reps': s['reps'],
         'created_at': logDate.toIso8601String(),
         'is_synced': false,
+        'user_id': _supabaseClient.auth.currentUser?.id,
       });
     }
 
@@ -151,6 +156,7 @@ class GymRepository {
         'template_id': templateId,
         'date': logDate.toIso8601String(),
         'is_synced': false,
+        'user_id': _supabaseClient.auth.currentUser?.id,
       });
 
       if (setsForSupabase.isNotEmpty) {
@@ -206,6 +212,7 @@ class GymRepository {
           'template_id': templateId,
           'date': now.toIso8601String(),
           'is_synced': true,
+          'user_id': _supabaseClient.auth.currentUser?.id,
         })
         .then((_) {
           (_database.update(_database.workoutLogs)
@@ -330,6 +337,34 @@ class GymRepository {
     return maxSet;
   }
 
+  Future<WorkoutSet?> getPersonalRecord(String exerciseName) async {
+    return getHistoricalMaxWeight(exerciseName);
+  }
+
+  Future<WorkoutSet?> getLastSetForExercise(String exerciseName) async {
+    return (_database.select(_database.workoutSets)
+          ..where((s) => s.exerciseName.equals(exerciseName))
+          ..orderBy([
+            (s) => OrderingTerm(
+              expression: s.createdAt,
+              mode: OrderingMode.desc,
+            ),
+          ])
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
+  Future<WorkoutLog?> getTodayWorkoutLog() async {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+    return (_database.select(_database.workoutLogs)..where(
+          (l) => l.date.isBetweenValues(todayStart, todayEnd),
+        ))
+        .getSingleOrNull();
+  }
+
   // --- 5. CRUD de Series Individuales ---
   Future<String> addWorkoutSet({
     required String workoutLogId,
@@ -365,6 +400,7 @@ class GymRepository {
           'reps': reps,
           'created_at': now.toIso8601String(),
           'is_synced': true,
+          'user_id': _supabaseClient.auth.currentUser?.id,
         })
         .then((_) {
           (_database.update(_database.workoutSets)

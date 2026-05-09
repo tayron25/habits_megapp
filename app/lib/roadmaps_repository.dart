@@ -41,12 +41,42 @@ class RoadmapsRepository {
         'description': description,
         'created_at': now.toIso8601String(),
         'is_synced': true,
+        'user_id': _supabaseClient.auth.currentUser?.id,
       });
 
       await (_database.update(_database.roadmaps)..where((r) => r.id.equals(id)))
           .write(const RoadmapsCompanion(isSynced: Value(true)));
     } catch (e) {
       print('❌ Error de sync al crear roadmap: $e');
+    }
+  }
+
+  Future<void> updateRoadmap(
+    String id, {
+    required String title,
+    String? description,
+  }) async {
+    // Local
+    await (_database.update(_database.roadmaps)..where((r) => r.id.equals(id))).write(
+      RoadmapsCompanion(
+        title: Value(title),
+        description: Value(description),
+        isSynced: const Value(false),
+      ),
+    );
+
+    // Remoto
+    try {
+      await _supabaseClient.from('roadmaps').update({
+        'title': title,
+        'description': description,
+        'is_synced': true,
+      }).eq('id', id);
+
+      await (_database.update(_database.roadmaps)..where((r) => r.id.equals(id)))
+          .write(const RoadmapsCompanion(isSynced: Value(true)));
+    } catch (e) {
+      print('❌ Error de sync al actualizar roadmap: $e');
     }
   }
 
@@ -101,6 +131,7 @@ class RoadmapsRepository {
         'title': title,
         'created_at': now.toIso8601String(),
         'is_synced': true,
+        'user_id': _supabaseClient.auth.currentUser?.id,
       });
 
       await (_database.update(_database.roadmapMilestones)..where((m) => m.id.equals(id)))
@@ -163,6 +194,7 @@ class RoadmapsRepository {
         'is_completed': false,
         'created_at': now.toIso8601String(),
         'is_synced': true,
+        'user_id': _supabaseClient.auth.currentUser?.id,
       });
 
       await (_database.update(_database.milestoneTasks)..where((t) => t.id.equals(id)))

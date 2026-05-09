@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:uuid/uuid.dart';
 import '../gym_provider.dart';
 
 class CreateTemplateModal extends ConsumerStatefulWidget {
@@ -43,7 +44,16 @@ class _CreateTemplateModalState extends ConsumerState<CreateTemplateModal> {
       _exercises.add({
         'muscle': null,
         'name': null,
+        'supersetId': null,
       });
+    });
+  }
+
+  void _addSupersetBlock() {
+    final supersetId = const Uuid().v4();
+    setState(() {
+      _exercises.add({'muscle': null, 'name': null, 'supersetId': supersetId});
+      _exercises.add({'muscle': null, 'name': null, 'supersetId': supersetId});
     });
   }
 
@@ -61,11 +71,13 @@ class _CreateTemplateModalState extends ConsumerState<CreateTemplateModal> {
     for (var ex in _exercises) {
       final muscle = ex['muscle']?.trim() ?? '';
       final name = ex['name']?.trim() ?? '';
+      final supersetId = ex['supersetId']?.trim() ?? '';
       
       if (name.isNotEmpty) {
         exercisesData.add({
           'muscle_group': muscle.isEmpty ? 'General' : muscle,
           'exercise_name': name,
+          if (supersetId.isNotEmpty) 'superset_id': supersetId,
         });
       }
     }
@@ -272,46 +284,141 @@ class _CreateTemplateModalState extends ConsumerState<CreateTemplateModal> {
                     const SizedBox(height: 12),
 
                     // --- Lista dinámica de Ejercicios ---
-                    ..._exercises.asMap().entries.map((entry) {
-                      final index = entry.key;
-                      final ex = entry.value;
-                      final muscle = ex['muscle'];
-                      final name = ex['name'];
-                      
-                      return Padding(
-                        padding: const EdgeInsets.only(bottom: 12.0),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.center,
-                          children: [
-                            Expanded(
-                              flex: 2,
-                              child: _buildSelectionButton('Músculo', muscle, () => _showMusclePicker(index)),
-                            ),
-                            const SizedBox(width: 8),
-                            Expanded(
-                              flex: 3,
-                              child: _buildSelectionButton('Ejercicio', name, () => _showExercisePicker(index, muscle)),
-                            ),
-                            if (_exercises.length > 1)
-                              IconButton(
-                                icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
-                                onPressed: () => _removeExerciseRow(index),
-                              ),
-                          ],
-                        ),
-                      );
-                    }),
+                    Builder(
+                      builder: (context) {
+                        List<List<int>> groupedIndices = [];
+                        for (int i = 0; i < _exercises.length; i++) {
+                          final ex = _exercises[i];
+                          if (ex['supersetId'] != null) {
+                            if (groupedIndices.isNotEmpty && _exercises[groupedIndices.last.last]['supersetId'] == ex['supersetId']) {
+                              groupedIndices.last.add(i);
+                            } else {
+                              groupedIndices.add([i]);
+                            }
+                          } else {
+                            groupedIndices.add([i]);
+                          }
+                        }
+
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: groupedIndices.map((indices) {
+                            final firstEx = _exercises[indices.first];
+                            final isGroup = firstEx['supersetId'] != null;
+
+                            Widget buildExerciseRow(int index) {
+                              final ex = _exercises[index];
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 8.0),
+                                child: Row(
+                                  crossAxisAlignment: CrossAxisAlignment.center,
+                                  children: [
+                                    Expanded(
+                                      flex: 2,
+                                      child: _buildSelectionButton('Músculo', ex['muscle'], () => _showMusclePicker(index)),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Expanded(
+                                      flex: 3,
+                                      child: _buildSelectionButton('Ejercicio', ex['name'], () => _showExercisePicker(index, ex['muscle'])),
+                                    ),
+                                    if (_exercises.length > 1)
+                                      IconButton(
+                                        icon: const Icon(Icons.remove_circle_outline, color: Colors.redAccent),
+                                        onPressed: () => _removeExerciseRow(index),
+                                      ),
+                                  ],
+                                ),
+                              );
+                            }
+
+                            if (isGroup) {
+                              return Container(
+                                margin: const EdgeInsets.only(bottom: 16),
+                                decoration: BoxDecoration(
+                                  color: const Color(0xFF121212),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: const Border(left: BorderSide(color: Colors.purpleAccent, width: 4)),
+                                ),
+                                padding: const EdgeInsets.all(12),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        const Text('Circuito / Superserie', style: TextStyle(color: Colors.purpleAccent, fontWeight: FontWeight.bold, fontSize: 12)),
+                                        IconButton(
+                                          icon: const Icon(Icons.delete_sweep, color: Colors.redAccent, size: 20),
+                                          constraints: const BoxConstraints(),
+                                          padding: EdgeInsets.zero,
+                                          onPressed: () {
+                                            setState(() {
+                                              _exercises.removeWhere((e) => e['supersetId'] == firstEx['supersetId']);
+                                            });
+                                          },
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    ...indices.map((idx) => buildExerciseRow(idx)),
+                                    Align(
+                                      alignment: Alignment.centerLeft,
+                                      child: TextButton.icon(
+                                        onPressed: () {
+                                          final lastIndex = _exercises.lastIndexWhere((e) => e['supersetId'] == firstEx['supersetId']);
+                                          if (lastIndex != -1) {
+                                            setState(() {
+                                              _exercises.insert(lastIndex + 1, {'muscle': null, 'name': null, 'supersetId': firstEx['supersetId']});
+                                            });
+                                          }
+                                        },
+                                        icon: const Icon(Icons.add, size: 16),
+                                        label: const Text('Añadir ejercicio al grupo', style: TextStyle(fontSize: 12)),
+                                        style: TextButton.styleFrom(
+                                          foregroundColor: Colors.purpleAccent,
+                                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                          minimumSize: Size.zero,
+                                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            } else {
+                              return Padding(
+                                padding: const EdgeInsets.only(bottom: 12.0),
+                                child: buildExerciseRow(indices.first),
+                              );
+                            }
+                          }).toList(),
+                        );
+                      },
+                    ),
 
                     // --- Botón para agregar más filas ---
                     Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
                       child: TextButton.icon(
                         onPressed: _addExerciseRow,
                         icon: const Icon(Icons.add),
                         label: const Text('Añadir otro ejercicio', style: TextStyle(fontWeight: FontWeight.bold)),
                         style: TextButton.styleFrom(
                           foregroundColor: colors.primary,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 4.0),
+                      child: TextButton.icon(
+                        onPressed: _addSupersetBlock,
+                        icon: const Icon(Icons.library_add),
+                        label: const Text('Añadir superserie', style: TextStyle(fontWeight: FontWeight.bold)),
+                        style: TextButton.styleFrom(
+                          foregroundColor: Colors.purpleAccent,
+                          padding: const EdgeInsets.symmetric(vertical: 12),
                         ),
                       ),
                     ),

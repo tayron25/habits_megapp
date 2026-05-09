@@ -50,12 +50,52 @@ class TasksRepository {
         'life_area_id': lifeAreaId,
         'created_at': now.toIso8601String(),
         'is_synced': true,
+        'user_id': _supabaseClient.auth.currentUser?.id,
       });
 
       await (_database.update(_database.tasks)..where((t) => t.id.equals(id)))
           .write(const TasksCompanion(isSynced: Value(true)));
     } catch (e) {
       print('❌ Error de sync en tarea: $e');
+    }
+  }
+
+  // --- Actualizar Tarea ---
+  Future<void> updateTask(
+    String id, {
+    required String title,
+    String? description,
+    required String priority,
+    DateTime? dueDate,
+    String? lifeAreaId,
+  }) async {
+    // Local
+    await (_database.update(_database.tasks)..where((t) => t.id.equals(id))).write(
+      TasksCompanion(
+        title: Value(title),
+        description: Value(description),
+        priority: Value(priority),
+        dueDate: Value(dueDate),
+        lifeAreaId: Value(lifeAreaId),
+        isSynced: const Value(false),
+      ),
+    );
+
+    // Remoto
+    try {
+      await _supabaseClient.from('tasks').update({
+        'title': title,
+        'description': description,
+        'priority': priority,
+        'due_date': dueDate?.toIso8601String(),
+        'life_area_id': lifeAreaId,
+        'is_synced': true,
+      }).eq('id', id);
+
+      await (_database.update(_database.tasks)..where((t) => t.id.equals(id)))
+          .write(const TasksCompanion(isSynced: Value(true)));
+    } catch (e) {
+      print('❌ Error de sync en update task: $e');
     }
   }
 

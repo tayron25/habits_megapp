@@ -3,19 +3,92 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/gym_provider.dart';
 import 'package:app/routine_detail_screen.dart';
 
-class GymTab extends ConsumerWidget {
+class GymTab extends ConsumerStatefulWidget {
   const GymTab({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final templatesAsync = ref.watch(gymTemplatesProvider);
+  ConsumerState<GymTab> createState() => _GymTabState();
+}
 
+class _GymTabState extends ConsumerState<GymTab> {
+  bool _forceShowTemplates = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final templatesAsync = ref.watch(gymTemplatesProvider);
+    final todayLogAsync = ref.watch(todayWorkoutLogProvider);
+
+    return todayLogAsync.when(
+      data: (log) {
+        if (log != null && log.templateId != null && !_forceShowTemplates) {
+          return templatesAsync.when(
+            data: (templatesList) {
+              WorkoutTemplateWithExercises? matched;
+              try {
+                matched = templatesList.firstWhere((t) => t.template.id == log.templateId);
+              } catch (_) {}
+
+              if (matched != null) {
+                // REDIRECCIÓN DIRECTA
+                return RoutineDetailScreen(
+                  templateId: matched.template.id,
+                  templateName: matched.template.name,
+                  exercises: matched.exercises,
+                  onBack: () {
+                    setState(() {
+                      _forceShowTemplates = true;
+                    });
+                  },
+                );
+              }
+              return _buildTemplatesGrid(context, templatesAsync, true);
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (_, __) => _buildTemplatesGrid(context, templatesAsync, false),
+          );
+        }
+        return _buildTemplatesGrid(context, templatesAsync, log != null);
+      },
+      loading: () => const Center(child: CircularProgressIndicator()),
+      error: (_, __) => _buildTemplatesGrid(context, templatesAsync, false),
+    );
+  }
+
+  Widget _buildTemplatesGrid(BuildContext context, AsyncValue<List<WorkoutTemplateWithExercises>> templatesAsync, bool hasActiveLog) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Padding(
-          padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
-          child: const Text(
+        if (hasActiveLog && _forceShowTemplates)
+           Padding(
+             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+             child: InkWell(
+               onTap: () {
+                 setState(() {
+                   _forceShowTemplates = false;
+                 });
+               },
+               borderRadius: BorderRadius.circular(16),
+               child: Container(
+                 width: double.infinity,
+                 padding: const EdgeInsets.all(24),
+                 decoration: BoxDecoration(
+                   color: Theme.of(context).colorScheme.primary.withOpacity(0.15),
+                   borderRadius: BorderRadius.circular(16),
+                   border: Border.all(color: Theme.of(context).colorScheme.primary.withOpacity(0.3), width: 1.5),
+                 ),
+                 child: Column(
+                   children: [
+                     Icon(Icons.fitness_center, color: Theme.of(context).colorScheme.primary, size: 40),
+                     const SizedBox(height: 12),
+                     Text('Continuar Entrenamiento Actual', style: TextStyle(color: Theme.of(context).colorScheme.primary, fontSize: 18, fontWeight: FontWeight.bold)),
+                   ],
+                 ),
+               ),
+             ),
+           ),
+        const Padding(
+          padding: EdgeInsets.fromLTRB(16, 16, 16, 12),
+          child: Text(
             'Tus Rutinas',
             style: TextStyle(
               fontSize: 24,
@@ -58,14 +131,15 @@ class GymTab extends ConsumerWidget {
                 itemCount: templatesList.length,
                 itemBuilder: (context, index) {
                   final item = templatesList[index];
+                  final muscleGroups = item.exercises.map((e) => e.muscleGroup).toSet().toList();
 
                   return Card(
-                    color: const Color(0xFF171717),
+                    color: const Color(0xFF1A1A1A),
                     elevation: 0,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(20),
                       side: const BorderSide(
-                        color: Color(0xFF262626),
+                        color: Color(0xFF2A2A2A),
                       ),
                     ),
                     child: Padding(
@@ -84,12 +158,17 @@ class GymTab extends ConsumerWidget {
                             ),
                           ),
                           const SizedBox(height: 8),
-                          Text(
-                            '${item.exercises.length} ejercicios',
-                            style: const TextStyle(
-                              color: Color(0xFF9A9A9A),
-                              fontSize: 14,
-                            ),
+                          Wrap(
+                            spacing: 4,
+                            runSpacing: 4,
+                            children: muscleGroups.take(2).map((mg) => Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF2A2A2A),
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                              child: Text(mg, style: const TextStyle(color: Colors.white70, fontSize: 10)),
+                            )).toList(),
                           ),
                           const Spacer(),
                           SizedBox(
@@ -103,9 +182,7 @@ class GymTab extends ConsumerWidget {
                                     builder: (context) => RoutineDetailScreen(
                                       templateId: item.template.id,
                                       templateName: item.template.name,
-                                      exercises: item.exercises
-                                          .map((e) => e.exerciseName)
-                                          .toList(),
+                                      exercises: item.exercises,
                                     ),
                                   ),
                                 );

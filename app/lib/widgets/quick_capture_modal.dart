@@ -1,24 +1,32 @@
+import 'package:app/local_database.dart';
 import 'package:app/notes_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class QuickCaptureModal extends ConsumerWidget {
-  const QuickCaptureModal({super.key});
+  final Note? existingNote;
+  const QuickCaptureModal({super.key, this.existingNote});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     return _QuickCaptureModalBody(
+      existingNote: existingNote,
       onSave: (content) {
-        ref.read(notesProvider.notifier).addNote(content);
+        if (existingNote == null) {
+          ref.read(notesProvider.notifier).addNote(content);
+        } else {
+          ref.read(notesProvider.notifier).updateNote(existingNote!.id, content);
+        }
       },
     );
   }
 }
 
 class _QuickCaptureModalBody extends StatefulWidget {
-  const _QuickCaptureModalBody({required this.onSave});
+  const _QuickCaptureModalBody({required this.onSave, this.existingNote});
 
   final ValueChanged<String> onSave;
+  final Note? existingNote;
 
   @override
   State<_QuickCaptureModalBody> createState() => _QuickCaptureModalBodyState();
@@ -26,6 +34,14 @@ class _QuickCaptureModalBody extends StatefulWidget {
 
 class _QuickCaptureModalBodyState extends State<_QuickCaptureModalBody> {
   final TextEditingController _controller = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingNote != null) {
+      _controller.text = widget.existingNote!.content;
+    }
+  }
 
   @override
   void dispose() {
@@ -119,7 +135,7 @@ class _QuickCaptureModalBodyState extends State<_QuickCaptureModalBody> {
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  child: const Text('Guardar'),
+                  child: Text(widget.existingNote == null ? 'Guardar' : 'Actualizar'),
                 ),
               ),
             ],

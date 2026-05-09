@@ -29,6 +29,10 @@ class SyncNotifier extends _$SyncNotifier {
   }
 
   Future<void> performSync() async {
+    final supabase = ref.read(supabaseClientProvider);
+    if (supabase.auth.currentUser == null) {
+      return; // No sincronizar si no hay usuario
+    }
     final repo = ref.read(syncRepositoryProvider);
     await repo.synchronizeAll();
   }

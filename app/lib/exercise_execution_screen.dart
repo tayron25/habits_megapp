@@ -21,12 +21,12 @@ class ExerciseSetDraft {
 
 class ExerciseExecutionScreen extends ConsumerStatefulWidget {
   final String templateId;
-  final String exerciseName;
+  final List<TemplateExercise> exercises;
 
   const ExerciseExecutionScreen({
     super.key,
     required this.templateId,
-    required this.exerciseName,
+    required this.exercises,
   });
 
   @override
@@ -37,8 +37,8 @@ class ExerciseExecutionScreen extends ConsumerStatefulWidget {
 class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScreen> {
   bool _isLoading = true;
   String? _workoutLogId;
-  WorkoutSet? _historicalMaxSet;
-  List<ExerciseSetDraft> _sets = [];
+  final Map<String, WorkoutSet?> _historicalMaxSets = {};
+  final Map<String, List<ExerciseSetDraft>> _sets = {};
 
   // Cronómetro (Cuenta regresiva)
   int _seconds = 90; // Default 1:30
@@ -61,33 +61,30 @@ class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScree
     final repo = ref.read(gymRepositoryProvider);
 
     try {
-      // 1. Obtener Log de hoy
       _workoutLogId = await repo.getOrCreateTodayWorkoutLog(widget.templateId);
 
-      // 2. Obtener Récord Histórico
-      _historicalMaxSet = await repo.getHistoricalMaxWeight(widget.exerciseName);
+      for (var ex in widget.exercises) {
+        final exName = ex.exerciseName;
+        _historicalMaxSets[exName] = await repo.getHistoricalMaxWeight(exName);
 
-      // 3. Cargar sets de HOY (Persistencia live)
-      final todaySets = await repo.getSetsForLogAndExercise(_workoutLogId!, widget.exerciseName);
+        final todaySets = await repo.getSetsForLogAndExercise(_workoutLogId!, exName);
 
-      if (todaySets.isNotEmpty) {
-        _sets = todaySets
-            .map((s) => ExerciseSetDraft(
-                  id: s.id,
-                  weight: s.weight,
-                  reps: s.reps,
-                  isCompleted: true,
-                ))
-            .toList();
-      } else {
-        // 4. Si no hay nada hoy, cargamos autocompletado (última sesión)
-        final lastSets = await repo.getLastWorkoutSets(widget.exerciseName);
-        if (lastSets.isNotEmpty) {
-          _sets = lastSets
-              .map((s) => ExerciseSetDraft(weight: s.weight, reps: s.reps))
+        if (todaySets.isNotEmpty) {
+          _sets[exName] = todaySets
+              .map((s) => ExerciseSetDraft(
+                    id: s.id,
+                    weight: s.weight,
+                    reps: s.reps,
+                    isCompleted: true,
+                  ))
               .toList();
         } else {
-          _sets = [ExerciseSetDraft(weight: 0, reps: 0)];
+          final lastSet = await repo.getLastSetForExercise(exName);
+          if (lastSet != null) {
+            _sets[exName] = [ExerciseSetDraft(weight: lastSet.weight, reps: lastSet.reps)];
+          } else {
+            _sets[exName] = [ExerciseSetDraft(weight: 0, reps: 0)];
+          }
         }
       }
     } catch (e) {
@@ -158,8 +155,8 @@ class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScree
     );
   }
 
-  void _editWeight(BuildContext context, int index) {
-    final s = _sets[index];
+  void _editWeight(BuildContext context, String exName, int index) {
+    final s = _sets[exName]![index];
     if (s.isCompleted) return;
     _editValueDialog(
       context: context,
@@ -172,8 +169,8 @@ class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScree
     );
   }
 
-  void _editReps(BuildContext context, int index) {
-    final s = _sets[index];
+  void _editReps(BuildContext context, String exName, int index) {
+    final s = _sets[exName]![index];
     if (s.isCompleted) return;
     _editValueDialog(
       context: context,
@@ -224,36 +221,43 @@ class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScree
   }
 
   // --- Series ---
-  void _addSet() {
+  void _addSet(String exName) async {
     double lastWeight = 0;
     int lastReps = 0;
-    if (_sets.isNotEmpty) {
-      lastWeight = _sets.last.weight;
-      lastReps = _sets.last.reps;
+    if (_sets[exName]!.isNotEmpty) {
+      lastWeight = _sets[exName]!.last.weight;
+      lastReps = _sets[exName]!.last.reps;
+    } else {
+      final repo = ref.read(gymRepositoryProvider);
+      final lastSet = await repo.getLastSetForExercise(exName);
+      if (lastSet != null) {
+        lastWeight = lastSet.weight;
+        lastReps = lastSet.reps;
+      }
     }
     setState(() {
-      _sets.add(ExerciseSetDraft(weight: lastWeight, reps: lastReps));
+      _sets[exName]!.add(ExerciseSetDraft(weight: lastWeight, reps: lastReps));
     });
   }
 
-  void _removeSet(int index) async {
-    final s = _sets[index];
+  void _removeSet(String exName, int index) async {
+    final s = _sets[exName]![index];
     if (s.id != null) {
       await ref.read(gymRepositoryProvider).deleteWorkoutSet(s.id!);
     }
     setState(() {
-      _sets.removeAt(index);
+      _sets[exName]!.removeAt(index);
     });
   }
 
-  Future<void> _toggleSetCompletion(int index) async {
-    final s = _sets[index];
+  Future<void> _toggleSetCompletion(String exName, int index) async {
+    final s = _sets[exName]![index];
     final repo = ref.read(gymRepositoryProvider);
 
     if (!s.isCompleted) {
       final newId = await repo.addWorkoutSet(
         workoutLogId: _workoutLogId!,
-        exerciseName: widget.exerciseName,
+        exerciseName: exName,
         weight: s.weight,
         reps: s.reps,
       );
@@ -276,16 +280,16 @@ class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScree
     }
   }
 
-  void _updateWeight(int index, double delta) {
-    final s = _sets[index];
+  void _updateWeight(String exName, int index, double delta) {
+    final s = _sets[exName]![index];
     if (s.isCompleted) return;
     setState(() {
       s.weight = (s.weight + delta).clamp(0.0, 999.0);
     });
   }
 
-  void _updateReps(int index, int delta) {
-    final s = _sets[index];
+  void _updateReps(String exName, int index, int delta) {
+    final s = _sets[exName]![index];
     if (s.isCompleted) return;
     setState(() {
       s.reps = (s.reps + delta).clamp(0, 999);
@@ -298,136 +302,99 @@ class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScree
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
+    final title = widget.exercises.length > 2 
+        ? 'Circuito (${widget.exercises.length} ejercicios)'
+        : widget.exercises.map((e) => e.exerciseName).join(' + ');
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.exerciseName),
+        title: Text(title, style: const TextStyle(fontSize: 16)),
         backgroundColor: const Color(0xFF0E0E0E),
         elevation: 0,
       ),
       body: Column(
         children: [
-          // Header: Récord y Cronómetro
+          // Cronómetro centralizado
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
-            child: Row(
-              children: [
-                // Récord
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF171717),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFF2A2A2A)),
-                    ),
-                    child: Column(
-                      children: [
-                        const Text('Mejor Marca', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.emoji_events, color: Colors.amber, size: 20),
-                            const SizedBox(width: 6),
-                            Text(
-                              _historicalMaxSet != null 
-                                  ? '${_historicalMaxSet!.weight.toStringAsFixed(1).replaceAll('.0', '')} kg x ${_historicalMaxSet!.reps}'
-                                  : '0 kg',
-                              style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18),
-                            ),
-                          ],
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+              decoration: BoxDecoration(
+                color: const Color(0xFF171717),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: const Color(0xFF2A2A2A)),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Padding(
+                    padding: EdgeInsets.only(left: 8.0),
+                    child: Text('Descanso', style: TextStyle(color: Colors.grey, fontSize: 13)),
+                  ),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      GestureDetector(
+                        onTap: () => _adjustTimer(-30),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(color: Color(0xFF262626), shape: BoxShape.circle),
+                          child: const Icon(Icons.remove, size: 14, color: Colors.white70),
                         ),
-                      ],
+                      ),
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: () => _editTimer(context),
+                        child: Text(
+                          _formatTime(_seconds),
+                          style: TextStyle(
+                            color: _seconds == 0 
+                                ? Colors.redAccent 
+                                : (_isTimerRunning ? Colors.greenAccent : Colors.white),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 24,
+                            fontFeatures: const [FontFeature.tabularFigures()],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      GestureDetector(
+                        onTap: () => _adjustTimer(30),
+                        child: Container(
+                          padding: const EdgeInsets.all(4),
+                          decoration: const BoxDecoration(color: Color(0xFF262626), shape: BoxShape.circle),
+                          child: const Icon(Icons.add, size: 14, color: Colors.white70),
+                        ),
+                      ),
+                    ],
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.only(right: 8.0),
+                    child: IconButton(
+                      onPressed: _toggleTimer,
+                      icon: Icon(_isTimerRunning ? Icons.pause : Icons.play_arrow, size: 20),
+                      color: _isTimerRunning ? Colors.orangeAccent : Colors.greenAccent,
+                      style: IconButton.styleFrom(
+                        backgroundColor: _isTimerRunning 
+                            ? Colors.orangeAccent.withOpacity(0.15) 
+                            : Colors.greenAccent.withOpacity(0.15),
+                        padding: const EdgeInsets.all(8),
+                      ),
                     ),
                   ),
-                ),
-                const SizedBox(width: 16),
-                // Timer
-                Expanded(
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF171717),
-                      borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: const Color(0xFF2A2A2A)),
-                    ),
-                    child: Column(
-                      children: [
-                        const Text('Descanso', style: TextStyle(color: Colors.grey, fontSize: 13)),
-                        const SizedBox(height: 8),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            GestureDetector(
-                              onTap: () => _adjustTimer(-30),
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: const BoxDecoration(color: Color(0xFF262626), shape: BoxShape.circle),
-                                child: const Icon(Icons.remove, size: 16, color: Colors.white70),
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            GestureDetector(
-                              onTap: () => _editTimer(context), // Abrir edición al tocar el timer
-                              child: Text(
-                                _formatTime(_seconds),
-                                style: TextStyle(
-                                  color: _seconds == 0 
-                                      ? Colors.redAccent 
-                                      : (_isTimerRunning ? Colors.greenAccent : Colors.white),
-                                  fontWeight: FontWeight.bold,
-                                  fontSize: 22,
-                                  fontFeatures: const [FontFeature.tabularFigures()],
-                                ),
-                              ),
-                            ),
-                            const SizedBox(width: 14),
-                            GestureDetector(
-                              onTap: () => _adjustTimer(30),
-                              child: Container(
-                                padding: const EdgeInsets.all(6),
-                                decoration: const BoxDecoration(color: Color(0xFF262626), shape: BoxShape.circle),
-                                child: const Icon(Icons.add, size: 16, color: Colors.white70),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
 
-          // Lista de Series (Más amplia para que quepan ~5)
+          // Lista de Ejercicios
           Expanded(
             child: ListView.builder(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              itemCount: _sets.length + 1,
+              itemCount: widget.exercises.length,
               itemBuilder: (context, index) {
-                if (index == _sets.length) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 16.0),
-                    child: FilledButton.icon(
-                      onPressed: _addSet,
-                      icon: const Icon(Icons.add),
-                      label: const Text('Añadir Serie', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFF171717),
-                        foregroundColor: Theme.of(context).colorScheme.primary,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                          side: const BorderSide(color: Color(0xFF262626)),
-                        ),
-                      ),
-                    ),
-                  );
-                }
-
-                final s = _sets[index];
-                return _buildSpaciousSetRow(context, index, s);
+                final exName = widget.exercises[index].exerciseName;
+                return _buildExerciseBlock(exName);
               },
             ),
           ),
@@ -436,7 +403,72 @@ class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScree
     );
   }
 
-  Widget _buildSpaciousSetRow(BuildContext context, int index, ExerciseSetDraft s) {
+  Widget _buildExerciseBlock(String exName) {
+    final sets = _sets[exName] ?? [];
+    final historicalMax = _historicalMaxSets[exName];
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 24),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          // Título del Ejercicio y PR
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(
+                child: Text(
+                  exName,
+                  style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold, color: Colors.white),
+                ),
+              ),
+              Row(
+                children: [
+                  const Icon(Icons.emoji_events, color: Colors.amber, size: 16),
+                  const SizedBox(width: 4),
+                  Text(
+                    historicalMax != null 
+                        ? '${historicalMax.weight.toStringAsFixed(1).replaceAll('.0', '')} kg x ${historicalMax.reps}'
+                        : '0 kg',
+                    style: const TextStyle(color: Colors.amber, fontWeight: FontWeight.bold, fontSize: 14),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Series del ejercicio
+          ...sets.asMap().entries.map((entry) {
+            final idx = entry.key;
+            final s = entry.value;
+            return _buildSpaciousSetRow(context, exName, idx, s);
+          }),
+
+          // Añadir Serie
+          Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8.0),
+            child: FilledButton.icon(
+              onPressed: () => _addSet(exName),
+              icon: const Icon(Icons.add),
+              label: const Text('Añadir Serie', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+              style: FilledButton.styleFrom(
+                backgroundColor: const Color(0xFF171717),
+                foregroundColor: Theme.of(context).colorScheme.primary,
+                padding: const EdgeInsets.symmetric(vertical: 12),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: const BorderSide(color: Color(0xFF262626)),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSpaciousSetRow(BuildContext context, String exName, int index, ExerciseSetDraft s) {
     final isDone = s.isCompleted;
 
     return Container(
@@ -455,7 +487,7 @@ class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScree
         children: [
           // Index y botón borrar
           GestureDetector(
-            onLongPress: () => _removeSet(index),
+            onLongPress: () => _removeSet(exName, index),
             child: CircleAvatar(
               radius: 14,
               backgroundColor: isDone ? Colors.green : const Color(0xFF333333),
@@ -477,11 +509,11 @@ class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScree
                   _AdjustButton(
                     icon: Icons.remove,
                     size: 28,
-                    onPressed: isDone ? null : () => _updateWeight(index, -2.5),
+                    onPressed: isDone ? null : () => _updateWeight(exName, index, -2.5),
                   ),
                   const SizedBox(width: 4),
                   GestureDetector(
-                    onTap: isDone ? null : () => _editWeight(context, index),
+                    onTap: isDone ? null : () => _editWeight(context, exName, index),
                     child: SizedBox(
                       width: 48,
                       child: Text(
@@ -499,7 +531,7 @@ class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScree
                   _AdjustButton(
                     icon: Icons.add,
                     size: 28,
-                    onPressed: isDone ? null : () => _updateWeight(index, 2.5),
+                    onPressed: isDone ? null : () => _updateWeight(exName, index, 2.5),
                   ),
                 ],
               ),
@@ -517,11 +549,11 @@ class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScree
                   _AdjustButton(
                     icon: Icons.remove,
                     size: 28,
-                    onPressed: isDone ? null : () => _updateReps(index, -1),
+                    onPressed: isDone ? null : () => _updateReps(exName, index, -1),
                   ),
                   const SizedBox(width: 4),
                   GestureDetector(
-                    onTap: isDone ? null : () => _editReps(context, index),
+                    onTap: isDone ? null : () => _editReps(context, exName, index),
                     child: SizedBox(
                       width: 32,
                       child: Text(
@@ -539,7 +571,7 @@ class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScree
                   _AdjustButton(
                     icon: Icons.add,
                     size: 28,
-                    onPressed: isDone ? null : () => _updateReps(index, 1),
+                    onPressed: isDone ? null : () => _updateReps(exName, index, 1),
                   ),
                 ],
               ),
@@ -548,7 +580,7 @@ class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScree
 
           // Check
           GestureDetector(
-            onTap: () => _toggleSetCompletion(index),
+            onTap: () => _toggleSetCompletion(exName, index),
             child: Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(

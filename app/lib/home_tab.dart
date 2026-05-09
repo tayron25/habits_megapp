@@ -1,10 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/habits_provider.dart';
 import 'package:app/notes_provider.dart';
 import 'package:app/tasks_provider.dart';
 import 'package:app/roadmaps_provider.dart';
 import 'package:app/roadmap_detail_screen.dart';
+import 'package:app/widgets/create_task_modal.dart';
+import 'package:app/widgets/create_habit_modal.dart';
+import 'package:app/widgets/quick_capture_modal.dart';
+import 'package:app/widgets/create_roadmap_modal.dart';
 
 // Helper functions (moved from main.dart)
 String formatTimeRemaining(DateTime? dueDate) {
@@ -33,6 +38,115 @@ Color getDueDateColor(DateTime? dueDate) {
   if (difference < 0) return Colors.redAccent;
   if (difference == 0) return Colors.amber;
   return Colors.grey;
+}
+
+void _showSmartDeleteDialog({
+  required BuildContext context,
+  required WidgetRef ref,
+  required String type,
+  required dynamic id,
+}) {
+  if (type == 'note' || type == 'roadmap') {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: const Text('Confirmar', style: TextStyle(color: Colors.white)),
+        content: const Text('¿Seguro que deseas eliminar esto?', style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () {
+              if (type == 'note') ref.read(notesProvider.notifier).removeNote(id);
+              if (type == 'roadmap') ref.read(roadmapsProvider.notifier).deleteRoadmap(id);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+  } else {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: const Text('¿Qué pasó con este elemento?', style: TextStyle(color: Colors.white)),
+        content: const Text('Puedes marcarlo como completado o borrarlo definitivamente.', style: TextStyle(color: Colors.white70)),
+        actions: [
+          TextButton(
+            onPressed: () {
+              if (type == 'task') ref.read(tasksProvider.notifier).toggleTask(id, true);
+              if (type == 'habit') ref.read(habitsProvider.notifier).toggleHabit(id, true);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Ya lo hice', style: TextStyle(color: Colors.blueAccent)),
+          ),
+          TextButton(
+            onPressed: () {
+              if (type == 'task') ref.read(tasksProvider.notifier).removeTask(id);
+              if (type == 'habit') ref.read(habitsProvider.notifier).removeHabit(id);
+              Navigator.pop(ctx);
+            },
+            child: const Text('Borrar definitivamente', style: TextStyle(color: Colors.redAccent)),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+void _showOptionsBottomSheet({
+  required BuildContext context,
+  required WidgetRef ref,
+  required String type,
+  required dynamic item,
+}) {
+  showModalBottomSheet(
+    context: context,
+    backgroundColor: const Color(0xFF1A1A1A),
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+    ),
+    builder: (ctx) {
+      return SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined, color: Colors.white),
+              title: const Text('Editar', style: TextStyle(color: Colors.white)),
+              onTap: () {
+                Navigator.pop(ctx);
+                if (type == 'task') {
+                  showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (c) => CreateTaskModal(existingTask: item));
+                } else if (type == 'habit') {
+                  showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (c) => CreateHabitModal(existingHabit: item.habit));
+                } else if (type == 'note') {
+                  showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (c) => QuickCaptureModal(existingNote: item));
+                } else if (type == 'roadmap') {
+                  showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (c) => CreateRoadmapModal(existingRoadmap: item));
+                }
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
+              title: const Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
+              onTap: () {
+                Navigator.pop(ctx);
+                _showSmartDeleteDialog(
+                  context: context,
+                  ref: ref,
+                  type: type,
+                  id: type == 'habit' ? item.habit.id : item.id,
+                );
+              },
+            ),
+          ],
+        ),
+      );
+    },
+  );
 }
 
 class HomeTab extends ConsumerWidget {
@@ -109,41 +223,57 @@ class HomeTab extends ConsumerWidget {
                           itemCount: habits.length,
                           itemBuilder: (context, index) {
                             final habitWithStatus = habits[index];
-                            final isCompleted =
-                                habitWithStatus.isCompletedToday;
+                            final habit = habitWithStatus.habit;
+                            final isCompleted = habitWithStatus.isCompletedToday;
+                            final isGoalMet = habitWithStatus.isGoalMet;
+                            final hasGoal = habit.goalAmount > 1;
+
+                            String periodText = '';
+                            switch (habit.goalPeriod) {
+                              case 'day': periodText = 'hoy'; break;
+                              case 'week': periodText = 'esta semana'; break;
+                              case 'month': periodText = 'este mes'; break;
+                              case 'year': periodText = 'este año'; break;
+                              default: periodText = '';
+                            }
 
                             return Container(
-                              margin: const EdgeInsets.only(
-                                bottom: 8,
-                              ), // Separación vertical
+                              margin: const EdgeInsets.only(bottom: 8),
                               decoration: BoxDecoration(
                                 color: const Color(0xFF171717),
                                 borderRadius: BorderRadius.circular(14),
                                 border: Border.all(
-                                  color: isCompleted
-                                      ? Theme.of(
-                                          context,
-                                        ).colorScheme.primary.withOpacity(0.5)
-                                      : const Color(0xFF262626),
-                                  width: isCompleted ? 1.5 : 1.0,
+                                  color: isGoalMet
+                                      ? Colors.greenAccent.withOpacity(0.5)
+                                      : (isCompleted
+                                          ? Theme.of(context).colorScheme.primary.withOpacity(0.5)
+                                          : const Color(0xFF262626)),
+                                  width: (isGoalMet || isCompleted) ? 1.5 : 1.0,
                                 ),
                               ),
                               child: Material(
                                 color: Colors.transparent,
                                 child: InkWell(
                                   borderRadius: BorderRadius.circular(14),
+                                  onLongPress: () {
+                                    HapticFeedback.heavyImpact();
+                                    _showOptionsBottomSheet(
+                                      context: context,
+                                      ref: ref,
+                                      type: 'habit',
+                                      item: habitWithStatus,
+                                    );
+                                  },
                                   onTap: () {
-                                    ref
-                                        .read(habitsProvider.notifier)
-                                        .toggleHabit(
-                                          habitWithStatus.habit.id,
-                                          !isCompleted,
-                                        );
+                                    ref.read(habitsProvider.notifier).toggleHabit(
+                                      habit.id,
+                                      !isCompleted,
+                                    );
                                   },
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
                                       horizontal: 12,
-                                      vertical: 8,
+                                      vertical: 12,
                                     ),
                                     child: Row(
                                       children: [
@@ -152,40 +282,63 @@ class HomeTab extends ConsumerWidget {
                                           child: Checkbox(
                                             value: isCompleted,
                                             onChanged: (value) {
-                                              ref
-                                                  .read(habitsProvider.notifier)
-                                                  .toggleHabit(
-                                                    habitWithStatus.habit.id,
-                                                    value ?? false,
-                                                  );
+                                              ref.read(habitsProvider.notifier).toggleHabit(
+                                                habit.id,
+                                                value ?? false,
+                                              );
                                             },
-                                            activeColor: Theme.of(
-                                              context,
-                                            ).colorScheme.primary,
+                                            activeColor: isGoalMet ? Colors.greenAccent : Theme.of(context).colorScheme.primary,
                                             checkColor: Colors.black,
                                             side: const BorderSide(
                                               color: Color(0xFF4A4A4A),
                                             ),
                                             shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(6),
+                                              borderRadius: BorderRadius.circular(6),
                                             ),
                                           ),
                                         ),
                                         const SizedBox(width: 8),
                                         Expanded(
-                                          child: Text(
-                                            habitWithStatus.habit.name,
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                              color: isCompleted
-                                                  ? Colors.white38
-                                                  : Colors.white,
-                                              decoration: isCompleted
-                                                  ? TextDecoration.lineThrough
-                                                  : null,
-                                            ),
+                                          child: Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                habit.name,
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isCompleted ? Colors.white38 : Colors.white,
+                                                  decoration: isCompleted ? TextDecoration.lineThrough : null,
+                                                ),
+                                              ),
+                                              if (hasGoal) ...[
+                                                const SizedBox(height: 6),
+                                                Row(
+                                                  children: [
+                                                    Expanded(
+                                                      child: ClipRRect(
+                                                        borderRadius: BorderRadius.circular(4),
+                                                        child: LinearProgressIndicator(
+                                                          value: (habitWithStatus.currentProgress / habit.goalAmount).clamp(0.0, 1.0),
+                                                          backgroundColor: const Color(0xFF2A2A2A),
+                                                          color: isGoalMet ? Colors.greenAccent : Theme.of(context).colorScheme.primary,
+                                                          minHeight: 4,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 8),
+                                                    Text(
+                                                      '${habitWithStatus.currentProgress} / ${habit.goalAmount} $periodText',
+                                                      style: TextStyle(
+                                                        color: isGoalMet ? Colors.greenAccent : Colors.grey,
+                                                        fontSize: 12,
+                                                        fontWeight: isGoalMet ? FontWeight.bold : FontWeight.normal,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ],
+                                            ],
                                           ),
                                         ),
                                       ],
@@ -264,65 +417,80 @@ class HomeTab extends ConsumerWidget {
                             final roadmap = roadmapItem.roadmap;
                             final progress = roadmapItem.progress;
 
-                            return GestureDetector(
-                              onTap: () {
-                                Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (context) => RoadmapDetailScreen(
-                                      roadmapId: roadmap.id,
-                                    ),
-                                  ),
-                                );
-                              },
-                              child: Container(
-                                margin: const EdgeInsets.only(bottom: 8),
-                                padding: const EdgeInsets.all(16),
-                                decoration: BoxDecoration(
-                                  color: const Color(0xFF1A1A1A),
-                                  borderRadius: BorderRadius.circular(14),
-                                  border: Border.all(
-                                    color: const Color(0xFF2A2A2A),
-                                  ),
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF171717),
+                                borderRadius: BorderRadius.circular(14),
+                                border: Border.all(
+                                  color: const Color(0xFF2A2A2A),
                                 ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Row(
-                                      mainAxisAlignment:
-                                          MainAxisAlignment.spaceBetween,
-                                      children: [
-                                        Expanded(
-                                          child: Text(
-                                            roadmap.title,
-                                            style: const TextStyle(
-                                              color: Colors.white,
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                          ),
+                              ),
+                              child: Material(
+                                color: Colors.transparent,
+                                child: InkWell(
+                                  borderRadius: BorderRadius.circular(14),
+                                  onTap: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) => RoadmapDetailScreen(
+                                          roadmapId: roadmap.id,
                                         ),
-                                        Text(
-                                          '${(progress * 100).toStringAsFixed(0)}%',
-                                          style: TextStyle(
-                                            color: Theme.of(
-                                              context,
-                                            ).colorScheme.primary,
-                                            fontWeight: FontWeight.bold,
-                                          ),
+                                      ),
+                                    );
+                                  },
+                                  onLongPress: () {
+                                    HapticFeedback.heavyImpact();
+                                    _showOptionsBottomSheet(
+                                      context: context,
+                                      ref: ref,
+                                      type: 'roadmap',
+                                      item: roadmap,
+                                    );
+                                  },
+                                  child: Padding(
+                                    padding: const EdgeInsets.all(16),
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            Expanded(
+                                              child: Text(
+                                                roadmap.title,
+                                                style: const TextStyle(
+                                                  color: Colors.white,
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.bold,
+                                                ),
+                                              ),
+                                            ),
+                                            Text(
+                                              '${(progress * 100).toStringAsFixed(0)}%',
+                                              style: TextStyle(
+                                                color: Theme.of(
+                                                  context,
+                                                ).colorScheme.primary,
+                                                fontWeight: FontWeight.bold,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                        const SizedBox(height: 8),
+                                        LinearProgressIndicator(
+                                          value: progress,
+                                          backgroundColor: const Color(0xFF2A2A2A),
+                                          color: Theme.of(
+                                            context,
+                                          ).colorScheme.primary,
+                                          borderRadius: BorderRadius.circular(4),
                                         ),
                                       ],
                                     ),
-                                    const SizedBox(height: 8),
-                                    LinearProgressIndicator(
-                                      value: progress,
-                                      backgroundColor: const Color(0xFF2A2A2A),
-                                      color: Theme.of(
-                                        context,
-                                      ).colorScheme.primary,
-                                      borderRadius: BorderRadius.circular(4),
-                                    ),
-                                  ],
+                                  ),
                                 ),
                               ),
                             );
@@ -476,7 +644,6 @@ class HomeTab extends ConsumerWidget {
 
                       return Container(
                         margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.all(16),
                         decoration: BoxDecoration(
                           color: const Color(0xFF151515),
                           borderRadius: BorderRadius.circular(16),
@@ -487,63 +654,50 @@ class HomeTab extends ConsumerWidget {
                             width: 1,
                           ),
                         ),
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Icon(
-                              Icons.format_quote_rounded,
-                              color: Theme.of(
-                                context,
-                              ).colorScheme.primary.withOpacity(0.7),
-                              size: 26,
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Padding(
-                                padding: const EdgeInsets.only(top: 2.0),
-                                child: Text(
-                                  note.content,
-                                  style: const TextStyle(
-                                    fontSize: 15,
-                                    color: Colors.white70,
-                                    height: 1.4,
-                                    fontStyle: FontStyle.italic,
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(16),
+                            onLongPress: () {
+                              HapticFeedback.heavyImpact();
+                              _showOptionsBottomSheet(
+                                context: context,
+                                ref: ref,
+                                type: 'note',
+                                item: note,
+                              );
+                            },
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Icon(
+                                    Icons.format_quote_rounded,
+                                    color: Theme.of(
+                                      context,
+                                    ).colorScheme.primary.withOpacity(0.7),
+                                    size: 26,
                                   ),
-                                ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Padding(
+                                      padding: const EdgeInsets.only(top: 2.0),
+                                      child: Text(
+                                        note.content,
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          color: Colors.white70,
+                                          height: 1.4,
+                                          fontStyle: FontStyle.italic,
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ],
                               ),
                             ),
-                            const SizedBox(width: 12),
-                            Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                IconButton(
-                                  visualDensity: VisualDensity.compact,
-                                  padding: EdgeInsets.zero,
-                                  constraints: const BoxConstraints(),
-                                  icon: const Icon(
-                                    Icons.delete_outline,
-                                    color: Colors.white38,
-                                    size: 20,
-                                  ),
-                                  onPressed: () {
-                                    ref
-                                        .read(notesProvider.notifier)
-                                        .removeNote(note.id);
-                                  },
-                                ),
-                                const SizedBox(height: 12),
-                                Icon(
-                                  note.isSynced
-                                      ? Icons.cloud_done
-                                      : Icons.cloud_off,
-                                  color: note.isSynced
-                                      ? Colors.green.withOpacity(0.5)
-                                      : Colors.grey.withOpacity(0.5),
-                                  size: 14,
-                                ),
-                              ],
-                            ),
-                          ],
+                          ),
                         ),
                       );
                     },
@@ -594,6 +748,15 @@ class _ExpandableTaskCardState extends ConsumerState<_ExpandableTaskCard> {
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(14),
+          onLongPress: () {
+            HapticFeedback.heavyImpact();
+            _showOptionsBottomSheet(
+              context: context,
+              ref: ref,
+              type: 'task',
+              item: task,
+            );
+          },
           onTap: hasDescription
               ? () {
                   setState(() {
@@ -657,12 +820,6 @@ class _ExpandableTaskCardState extends ConsumerState<_ExpandableTaskCard> {
                         ),
                       )
                     : null,
-                trailing: IconButton(
-                  icon: const Icon(Icons.delete_outline, color: Colors.white38),
-                  onPressed: () {
-                    ref.read(tasksProvider.notifier).removeTask(task.id);
-                  },
-                ),
               ),
               // --- SECCIÓN DESPLEGABLE ---
               AnimatedSize(

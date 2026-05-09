@@ -9,6 +9,10 @@ import 'package:app/widgets/create_roadmap_modal.dart';
 import 'package:app/home_tab.dart';
 import 'package:app/gym_tab.dart';
 import 'package:app/sync_provider.dart';
+import 'package:app/services/sync_service.dart';
+import 'package:app/notes_provider.dart';
+import 'package:app/auth_screen.dart';
+import 'dart:async';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -21,6 +25,8 @@ void main() async {
 
   runApp(const ProviderScope(child: MyApp()));
 }
+
+
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -35,8 +41,57 @@ class MyApp extends StatelessWidget {
         scaffoldBackgroundColor: const Color(0xFF0E0E0E),
         useMaterial3: true,
       ),
-      home: const MainNavigationScreen(),
+      home: const RootScreen(),
     );
+  }
+}
+
+class RootScreen extends StatefulWidget {
+  const RootScreen({super.key});
+
+  @override
+  State<RootScreen> createState() => _RootScreenState();
+}
+
+class _RootScreenState extends State<RootScreen> {
+  bool _isInitialized = false;
+  bool _isAuthenticated = false;
+  late final StreamSubscription<AuthState> _authStateSubscription;
+
+  @override
+  void initState() {
+    super.initState();
+    _authStateSubscription = Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      if (!mounted) return;
+      setState(() {
+        _isInitialized = true;
+        _isAuthenticated = data.session != null;
+      });
+    });
+  }
+
+  @override
+  void dispose() {
+    _authStateSubscription.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (!_isInitialized) {
+      return const Scaffold(
+        backgroundColor: Color(0xFF0E0E0E),
+        body: Center(
+          child: CircularProgressIndicator(color: Colors.deepPurpleAccent),
+        ),
+      );
+    }
+
+    if (_isAuthenticated) {
+      return const MainNavigationScreen();
+    } else {
+      return const AuthScreen();
+    }
   }
 }
 
@@ -61,8 +116,20 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
   ];
 
   @override
+  void initState() {
+    super.initState();
+    Future.microtask(() {
+      final syncService = SyncService(
+        supabaseClient: ref.read(supabaseClientProvider),
+        database: ref.read(appDatabaseProvider),
+      );
+      syncService.syncDown();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    // Iniciamos el servicio de sincronización en segundo plano
+    // Iniciamos el servicio de sincronización push en segundo plano
     ref.watch(syncProvider);
 
     return Scaffold(

@@ -1,9 +1,11 @@
+import 'package:app/local_database.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/roadmaps_provider.dart';
 
 class CreateRoadmapModal extends ConsumerStatefulWidget {
-  const CreateRoadmapModal({super.key});
+  final Roadmap? existingRoadmap;
+  const CreateRoadmapModal({super.key, this.existingRoadmap});
 
   @override
   ConsumerState<CreateRoadmapModal> createState() => _CreateRoadmapModalState();
@@ -12,6 +14,15 @@ class CreateRoadmapModal extends ConsumerStatefulWidget {
 class _CreateRoadmapModalState extends ConsumerState<CreateRoadmapModal> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.existingRoadmap != null) {
+      _titleController.text = widget.existingRoadmap!.title;
+      _descController.text = widget.existingRoadmap!.description ?? '';
+    }
+  }
 
   @override
   void dispose() {
@@ -26,10 +37,18 @@ class _CreateRoadmapModalState extends ConsumerState<CreateRoadmapModal> {
 
     final desc = _descController.text.trim();
 
-    ref.read(roadmapsProvider.notifier).createRoadmap(
-          title,
-          desc.isEmpty ? null : desc,
-        );
+    if (widget.existingRoadmap == null) {
+      ref.read(roadmapsProvider.notifier).createRoadmap(
+            title,
+            desc.isEmpty ? null : desc,
+          );
+    } else {
+      ref.read(roadmapsProvider.notifier).updateRoadmap(
+            widget.existingRoadmap!.id,
+            title,
+            desc.isEmpty ? null : desc,
+          );
+    }
 
     Navigator.pop(context);
   }
@@ -69,9 +88,9 @@ class _CreateRoadmapModalState extends ConsumerState<CreateRoadmapModal> {
                       ),
                     ),
                     const SizedBox(height: 20),
-                    const Text(
-                      'Nuevo Roadmap',
-                      style: TextStyle(
+                    Text(
+                      widget.existingRoadmap == null ? 'Nuevo Roadmap' : 'Editar Roadmap',
+                      style: const TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                         color: Colors.white,
@@ -107,9 +126,9 @@ class _CreateRoadmapModalState extends ConsumerState<CreateRoadmapModal> {
                         borderRadius: BorderRadius.circular(14),
                       ),
                     ),
-                    child: const Text(
-                      'Crear Roadmap',
-                      style: TextStyle(fontWeight: FontWeight.bold),
+                    child: Text(
+                      widget.existingRoadmap == null ? 'Crear Roadmap' : 'Actualizar Roadmap',
+                      style: const TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
