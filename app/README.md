@@ -33,12 +33,11 @@ La UI lee de la base de datos local usando Streams (`ref.watch`). Al crear/edita
 
 ## 🏗️ Estado Actual del Desarrollo
 
-El esquema actual de base de datos local (Drift) está en la **versión 10 (v10)** con 13 tablas operativas en el ecosistema:
+El esquema actual de base de datos local (Drift) está en la **versión 11 (v11)** con 9 tablas operativas en el ecosistema Life OS (El módulo de Gimnasio ha sido extraído a su propia aplicación independiente en la carpeta `/gym`):
 
 - **Módulo Áreas de Vida:** Tabla `LifeAreas` (`id`, `name`, `icon`, `createdAt`, `isSynced`).
 - **Módulo Notas (Quick Captures):** Tabla `Notes` (`id`, `content`, `createdAt`, `isSynced`).
 - **Módulo Hábitos (V3):** Tablas `Habits` (avanzada con `startDate`, `endDate`, `repeatMode`, `goalAmount`, `goalPeriod`, `timeOfDay`, `lifeAreaId`) y `HabitLogs` (registro diario).
-- **Módulo Gimnasio:** Tablas `WorkoutTemplates` (plantillas), `TemplateExercises` (ejercicios, incluye soporte a superseries con `supersetId`), `WorkoutLogs` (sesión activa), y `WorkoutSets` (series/repeticiones).
 - **Módulo Tareas (To-Do):** Tabla `Tasks` (`title`, `description`, `priority`, `dueDate`, `lifeAreaId`, `isCompleted`).
 - **Módulo Roadmaps (Metas Largo Plazo):** Tablas `Roadmaps` (meta global), `RoadmapMilestones` (hitos) y `MilestoneTasks` (checklist de hitos).
 - **Módulo de Sincronización:** Tabla `PendingSyncActions` (Cola de sincronización offline para gestionar eliminaciones y fallos de red).
@@ -56,10 +55,8 @@ Sistema dinámico para construir consistencia.
 - Asociados fuertemente a las "Áreas de Vida".
 - Filtrado inteligente reactivo.
 
-### 2. Gimnasio (Workout Tracker)
-Registro detallado del entrenamiento de fuerza.
-- Creación de plantillas.
-- Registro en vivo de Peso y Repeticiones por cada serie durante la sesión.
+### 2. Gimnasio (App Independiente)
+*Nota: Este módulo fue extraído al proyecto hermano en `/gym` para un enfoque especializado, pero comparte la misma base de datos remota Supabase.*
 
 ### 3. Tareas Únicas (To-Do List)
 Gestor de acciones puntuales.

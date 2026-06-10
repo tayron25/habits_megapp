@@ -33,7 +33,7 @@ final class HabitsNotifierProvider
   HabitsNotifier create() => HabitsNotifier();
 }
 
-String _$habitsNotifierHash() => r'8d8c8722d7197b922b57a2b32ee35799ce82d246';
+String _$habitsNotifierHash() => r'546710e415b1bac9faebd0a4d0f1368519e86317';
 
 abstract class _$HabitsNotifier extends $StreamNotifier<HabitWithStatusList> {
   Stream<HabitWithStatusList> build();

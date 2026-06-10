@@ -25,10 +25,6 @@ class SyncRepository {
       await _syncLifeAreas();
       await _syncHabits();
       await _syncHabitLogs();
-      await _syncWorkoutTemplates();
-      await _syncTemplateExercises();
-      await _syncWorkoutLogs();
-      await _syncWorkoutSets();
       await _syncRoadmaps();
       await _syncRoadmapMilestones();
       await _syncMilestoneTasks();
@@ -179,96 +175,6 @@ class SyncRepository {
       }
     }
   }
-
-  Future<void> _syncWorkoutTemplates() async {
-    final unsynced = await (_database.select(
-      _database.workoutTemplates,
-    )..where((t) => t.isSynced.equals(false))).get();
-    for (final item in unsynced) {
-      try {
-        await _supabase.from('workout_templates').upsert({
-          'id': item.id,
-          'name': item.name,
-          'created_at': item.createdAt.toIso8601String(),
-          'user_id': _supabase.auth.currentUser?.id,
-        });
-        await (_database.update(_database.workoutTemplates)
-              ..where((t) => t.id.equals(item.id)))
-            .write(const WorkoutTemplatesCompanion(isSynced: Value(true)));
-      } catch (e) {
-        print('Error en sync de WorkoutTemplates: $e');
-      }
-    }
-  }
-
-  Future<void> _syncTemplateExercises() async {
-    final unsynced = await (_database.select(
-      _database.templateExercises,
-    )..where((t) => t.isSynced.equals(false))).get();
-    for (final item in unsynced) {
-      try {
-        await _supabase.from('template_exercises').upsert({
-          'id': item.id,
-          'template_id': item.templateId,
-          'muscle_group': item.muscleGroup,
-          'exercise_name': item.exerciseName,
-          'created_at': item.createdAt.toIso8601String(),
-          'user_id': _supabase.auth.currentUser?.id,
-        });
-        await (_database.update(_database.templateExercises)
-              ..where((t) => t.templateId.equals(item.templateId)))
-            .write(const TemplateExercisesCompanion(isSynced: Value(true)));
-      } catch (e) {
-        print('Error en sync de TemplateExercises: $e');
-      }
-    }
-  }
-
-  Future<void> _syncWorkoutLogs() async {
-    final unsynced = await (_database.select(
-      _database.workoutLogs,
-    )..where((t) => t.isSynced.equals(false))).get();
-    for (final item in unsynced) {
-      try {
-        await _supabase.from('workout_logs').upsert({
-          'id': item.id,
-          'template_id': item.templateId,
-          'date': item.date.toIso8601String(),
-          'user_id': _supabase.auth.currentUser?.id,
-        });
-        await (_database.update(_database.workoutLogs)
-              ..where((t) => t.id.equals(item.id)))
-            .write(const WorkoutLogsCompanion(isSynced: Value(true)));
-      } catch (e) {
-        print('Error en sync de WorkoutLogs: $e');
-      }
-    }
-  }
-
-  Future<void> _syncWorkoutSets() async {
-    final unsynced = await (_database.select(
-      _database.workoutSets,
-    )..where((t) => t.isSynced.equals(false))).get();
-    for (final item in unsynced) {
-      try {
-        await _supabase.from('workout_sets').upsert({
-          'id': item.id,
-          'workout_log_id': item.workoutLogId,
-          'exercise_name': item.exerciseName,
-          'weight': item.weight,
-          'reps': item.reps,
-          'created_at': item.createdAt?.toIso8601String(),
-          'user_id': _supabase.auth.currentUser?.id,
-        });
-        await (_database.update(_database.workoutSets)
-              ..where((t) => t.id.equals(item.id)))
-            .write(const WorkoutSetsCompanion(isSynced: Value(true)));
-      } catch (e) {
-        print('Error en sync de WorkoutSets: $e');
-      }
-    }
-  }
-
   Future<void> _syncRoadmaps() async {
     final unsynced = await (_database.select(
       _database.roadmaps,

@@ -33,7 +33,7 @@ final class RoadmapsNotifierProvider
   RoadmapsNotifier create() => RoadmapsNotifier();
 }
 
-String _$roadmapsNotifierHash() => r'f2429cdc0d27867e7daa11bd8580a25795950a1c';
+String _$roadmapsNotifierHash() => r'4c79e9c5505c72840cb98fbf318f599259a9ae2a';
 
 abstract class _$RoadmapsNotifier extends $StreamNotifier<RoadmapsList> {
   Stream<RoadmapsList> build();

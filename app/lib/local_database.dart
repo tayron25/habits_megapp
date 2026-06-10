@@ -67,57 +67,7 @@ class HabitLogs extends Table {
   Set<Column> get primaryKey => {id};
 }
 
-// --- TABLAS DEL SPRINT 3 (Gimnasio) ---
-
-// 1. Plantillas
-class WorkoutTemplates extends Table {
-  TextColumn get id => text()();
-  TextColumn get name => text()();
-  DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
-  BoolColumn get isSynced => boolean().clientDefault(() => false)();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-// 2. Ejercicios de la plantilla
-class TemplateExercises extends Table {
-  TextColumn get id => text()();
-  TextColumn get templateId => text()();
-  TextColumn get muscleGroup => text()();
-  TextColumn get exerciseName => text()();
-  TextColumn get supersetId => text().nullable()();
-  DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
-  BoolColumn get isSynced => boolean().clientDefault(() => false)();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-// 3. Registro de un día de entrenamiento
-class WorkoutLogs extends Table {
-  TextColumn get id => text()();
-  TextColumn get templateId => text().nullable()(); // Nullable por si entrenas sin plantilla
-  DateTimeColumn get date => dateTime().clientDefault(() => DateTime.now())();
-  BoolColumn get isSynced => boolean().clientDefault(() => false)();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
-
-// 4. Series (Peso y Repeticiones)
-class WorkoutSets extends Table {
-  TextColumn get id => text()();
-  TextColumn get workoutLogId => text()();
-  TextColumn get exerciseName => text()();
-  RealColumn get weight => real()(); // Real permite decimales (ej. 12.5 kg)
-  IntColumn get reps => integer()();
-  DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
-  BoolColumn get isSynced => boolean().clientDefault(() => false)();
-
-  @override
-  Set<Column> get primaryKey => {id};
-}
+// --- EL MÓDULO DE GIMNASIO FUE EXTRAÍDO A UNA APP INDEPENDIENTE ---
 class Tasks extends Table {
   TextColumn get id => text()();
   TextColumn get title => text()();
@@ -182,10 +132,6 @@ class PendingSyncActions extends Table {
   LifeAreas,
   Habits,
   HabitLogs,
-  WorkoutTemplates,
-  TemplateExercises,
-  WorkoutLogs,
-  WorkoutSets,
   Tasks,
   Roadmaps,
   RoadmapMilestones,
@@ -196,7 +142,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   @override
   MigrationStrategy get migration {
@@ -210,10 +156,7 @@ class AppDatabase extends _$AppDatabase {
           await m.createTable(habitLogs);
         }
         if (from < 3) {
-          await m.createTable(workoutTemplates);
-          await m.createTable(templateExercises);
-          await m.createTable(workoutLogs);
-          await m.createTable(workoutSets);
+          // Tablas del gimnasio extraídas, ya no se crean en la app principal.
         }
         // Migración para la Versión 4 (Tareas)
         if (from < 4) {
@@ -252,7 +195,14 @@ class AppDatabase extends _$AppDatabase {
         }
         // Migración para la Versión 10 (Supersets)
         if (from < 10) {
-          await m.addColumn(templateExercises, templateExercises.supersetId);
+          // Extraído al gimnasio
+        }
+        // Migración para la Versión 11 (Extracción de Gym)
+        if (from < 11) {
+          await m.issueCustomQuery('DROP TABLE IF EXISTS workout_templates;');
+          await m.issueCustomQuery('DROP TABLE IF EXISTS template_exercises;');
+          await m.issueCustomQuery('DROP TABLE IF EXISTS workout_logs;');
+          await m.issueCustomQuery('DROP TABLE IF EXISTS workout_sets;');
         }
       },
       beforeOpen: (details) async {

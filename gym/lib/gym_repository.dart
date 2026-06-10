@@ -1,0 +1,464 @@
+import 'package:gym/local_database.dart';
+import 'package:drift/drift.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:uuid/uuid.dart';
+import 'package:rxdart/rxdart.dart';
+
+class GymRepository {
+  GymRepository({
+    required SupabaseClient supabaseClient,
+    required AppDatabase database,
+  }) : _supabaseClient = supabaseClient,
+       _database = database;
+
+  final SupabaseClient _supabaseClient;
+  final AppDatabase _database;
+  final Uuid _uuid = const Uuid();
+
+  // --- 1. Crear una Plantilla con Ejercicios ---
+  Future<void> saveWorkoutTemplate(
+    String name,
+    List<Map<String, String>> exercises,
+  ) async {
+    final templateId = _uuid.v4();
+    final createdAt = DateTime.now();
+
+    // 1. Guardar plantilla localmente
+    await _database
+        .into(_database.workoutTemplates)
+        .insert(
+          WorkoutTemplatesCompanion.insert(
+            id: templateId,
+            name: name,
+            createdAt: Value(createdAt),
+            isSynced: const Value(false),
+          ),
+        );
+
+    // 2. Guardar ejercicios de la plantilla localmente
+    final List<Map<String, dynamic>> exercisesForSupabase = [];
+
+    for (final exercise in exercises) {
+      final exerciseId = _uuid.v4();
+      await _database
+          .into(_database.templateExercises)
+          .insert(
+            TemplateExercisesCompanion.insert(
+              id: exerciseId,
+              templateId: templateId,
+              muscleGroup: exercise['muscle_group']!,
+              exerciseName: exercise['exercise_name']!,
+              supersetId: Value(exercise['superset_id']),
+              createdAt: Value(createdAt),
+              isSynced: const Value(false),
+            ),
+          );
+
+      // Preparamos los datos para enviar a la nube en bloque
+      exercisesForSupabase.add({
+        'id': exerciseId,
+        'template_id': templateId,
+        'muscle_group': exercise['muscle_group'],
+        'exercise_name': exercise['exercise_name'],
+        'superset_id': exercise['superset_id'],
+        'created_at': createdAt.toIso8601String(),
+        'is_synced': true,
+        'user_id': _supabaseClient.auth.currentUser?.id,
+      });
+    }
+
+    // 3. Intentar subir a Supabase
+    try {
+      // Subimos la plantilla
+      await _supabaseClient.from('workout_templates').insert({
+        'id': templateId,
+        'name': name,
+        'created_at': createdAt.toIso8601String(),
+        'is_synced': true,
+        'user_id': _supabaseClient.auth.currentUser?.id,
+      });
+
+      // Subimos todos los ejercicios de golpe
+      if (exercisesForSupabase.isNotEmpty) {
+        await _supabaseClient
+            .from('template_exercises')
+            .insert(exercisesForSupabase);
+      }
+
+      // Si todo sale bien, marcamos como sincronizado localmente
+      await (_database.update(_database.workoutTemplates)
+            ..where((t) => t.id.equals(templateId)))
+          .write(const WorkoutTemplatesCompanion(isSynced: Value(true)));
+
+      await (_database.update(_database.templateExercises)
+            ..where((t) => t.templateId.equals(templateId)))
+          .write(const TemplateExercisesCompanion(isSynced: Value(true)));
+    } catch (e) {
+      // Si falla la red, los datos ya están seguros en Drift (SQLite)
+      print('❌ Error sincronizando Plantilla de Gym: $e');
+    }
+  }
+
+  // --- 2. Registrar un Entrenamiento en Vivo (Series) ---
+  // (Esta función la usaremos en el próximo paso cuando armes la UI del entrenamiento)
+  Future<void> saveWorkoutLog(
+    String? templateId,
+    List<Map<String, dynamic>> sets,
+  ) async {
+    final logId = _uuid.v4();
+    final logDate = DateTime.now();
+
+    // Guardar el registro base
+    await _database
+        .into(_database.workoutLogs)
+        .insert(
+          WorkoutLogsCompanion.insert(
+            id: logId,
+            templateId: Value(templateId),
+            date: Value(logDate),
+            isSynced: const Value(false),
+          ),
+        );
+
+    // Guardar series locales y preparar para Supabase
+    final List<Map<String, dynamic>> setsForSupabase = [];
+    for (final s in sets) {
+      final setId = _uuid.v4();
+      await _database
+          .into(_database.workoutSets)
+          .insert(
+            WorkoutSetsCompanion.insert(
+              id: setId,
+              workoutLogId: logId,
+              exerciseName: s['exercise_name'],
+              weight: s['weight'],
+              reps: s['reps'],
+              createdAt: Value(logDate),
+              isSynced: const Value(false),
+            ),
+          );
+
+      setsForSupabase.add({
+        'id': setId,
+        'workout_log_id': logId,
+        'exercise_name': s['exercise_name'],
+        'weight': s['weight'],
+        'reps': s['reps'],
+        'created_at': logDate.toIso8601String(),
+        'is_synced': true,
+        'user_id': _supabaseClient.auth.currentUser?.id,
+      });
+    }
+
+    try {
+      await _supabaseClient.from('workout_logs').insert({
+        'id': logId,
+        'template_id': templateId,
+        'date': logDate.toIso8601String(),
+        'is_synced': true,
+        'user_id': _supabaseClient.auth.currentUser?.id,
+      });
+
+      if (setsForSupabase.isNotEmpty) {
+        await _supabaseClient.from('workout_sets').insert(setsForSupabase);
+      }
+
+      await (_database.update(_database.workoutLogs)
+            ..where((t) => t.id.equals(logId)))
+          .write(const WorkoutLogsCompanion(isSynced: Value(true)));
+      await (_database.update(_database.workoutSets)
+            ..where((t) => t.workoutLogId.equals(logId)))
+          .write(const WorkoutSetsCompanion(isSynced: Value(true)));
+    } catch (e) {
+      print('❌ Error sincronizando Entrenamiento de Gym: $e');
+    }
+  }
+
+  // --- 3. Obtener el Log de hoy (o crearlo) para una plantilla ---
+  Future<String> getOrCreateTodayWorkoutLog(String templateId) async {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+    final existingLog =
+        await (_database.select(_database.workoutLogs)..where(
+              (l) =>
+                  l.templateId.equals(templateId) &
+                  l.date.isBetweenValues(todayStart, todayEnd),
+            ))
+            .getSingleOrNull();
+
+    if (existingLog != null) {
+      return existingLog.id;
+    }
+
+    final logId = _uuid.v4();
+    await _database
+        .into(_database.workoutLogs)
+        .insert(
+          WorkoutLogsCompanion.insert(
+            id: logId,
+            templateId: Value(templateId),
+            date: Value(now),
+            isSynced: const Value(false),
+          ),
+        );
+
+    // Remoto en background
+    _supabaseClient
+        .from('workout_logs')
+        .insert({
+          'id': logId,
+          'template_id': templateId,
+          'date': now.toIso8601String(),
+          'is_synced': true,
+          'user_id': _supabaseClient.auth.currentUser?.id,
+        })
+        .then((_) {
+          (_database.update(_database.workoutLogs)
+                ..where((t) => t.id.equals(logId)))
+              .write(const WorkoutLogsCompanion(isSynced: Value(true)));
+        })
+        .catchError((e) => print('Error sync workout log: $e'));
+
+    return logId;
+  }
+
+  Stream<List<WorkoutSet>> watchTodaySets(String templateId) {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+    // Usamos un stream que emite el log de hoy
+    return (_database.select(_database.workoutLogs)..where(
+          (l) =>
+              l.templateId.equals(templateId) &
+              l.date.isBetweenValues(todayStart, todayEnd),
+        ))
+        .watchSingleOrNull()
+        .switchMap((log) {
+          if (log == null) return Stream.value(<WorkoutSet>[]);
+          return (_database.select(
+            _database.workoutSets,
+          )..where((s) => s.workoutLogId.equals(log.id))).watch();
+        });
+  }
+
+  Future<Map<String, List<String>>> getExerciseCatalog() async {
+    final catalog = <String, Set<String>>{};
+
+    final templates = await _database.select(_database.templateExercises).get();
+    for (var t in templates) {
+      catalog.putIfAbsent(t.muscleGroup, () => {}).add(t.exerciseName);
+    }
+
+    // Pre-poblar algunos por defecto si está vacío
+    if (catalog.isEmpty) {
+      catalog['Pecho'] = {'Press de Banca', 'Aperturas', 'Flexiones'};
+      catalog['Espalda'] = {'Dominadas', 'Remo con Barra', 'Jalón al Pecho'};
+      catalog['Piernas'] = {
+        'Sentadillas',
+        'Prensa',
+        'Peso Muerto Rumano',
+        'Extensiones',
+      };
+      catalog['Brazos'] = {'Curl de Bíceps', 'Press Francés', 'Curl Martillo'};
+      catalog['Hombros'] = {
+        'Press Militar',
+        'Elevaciones Laterales',
+        'Pájaros',
+      };
+    }
+
+    return catalog.map((key, value) => MapEntry(key, value.toList()..sort()));
+  }
+
+  Future<List<WorkoutSet>> getSetsForLogAndExercise(
+    String workoutLogId,
+    String exerciseName,
+  ) async {
+    return (_database.select(_database.workoutSets)
+          ..where(
+            (s) =>
+                s.workoutLogId.equals(workoutLogId) &
+                s.exerciseName.equals(exerciseName),
+          )
+          ..orderBy([
+            (s) =>
+                OrderingTerm(expression: s.createdAt, mode: OrderingMode.asc),
+          ]))
+        .get();
+  }
+
+  // --- 4. Historial y Autocompletado de Ejercicios ---
+  Future<List<WorkoutSet>> getLastWorkoutSets(String exerciseName) async {
+    // 1. Encontrar el logId del último entrenamiento donde se hizo este ejercicio
+    final lastSet =
+        await (_database.select(_database.workoutSets)
+              ..where((s) => s.exerciseName.equals(exerciseName))
+              ..orderBy([
+                (s) => OrderingTerm(
+                  expression: s.createdAt,
+                  mode: OrderingMode.desc,
+                ),
+              ])
+              ..limit(1))
+            .getSingleOrNull();
+
+    if (lastSet == null) return [];
+
+    // 2. Obtener todos los sets de ese ejercicio en ese mismo logId
+    return (_database.select(_database.workoutSets)
+          ..where(
+            (s) =>
+                s.exerciseName.equals(exerciseName) &
+                s.workoutLogId.equals(lastSet.workoutLogId),
+          )
+          ..orderBy([
+            (s) =>
+                OrderingTerm(expression: s.createdAt, mode: OrderingMode.asc),
+          ]))
+        .get();
+  }
+
+  Future<WorkoutSet?> getHistoricalMaxWeight(String exerciseName) async {
+    final sets = await (_database.select(
+      _database.workoutSets,
+    )..where((s) => s.exerciseName.equals(exerciseName))).get();
+
+    if (sets.isEmpty) return null;
+
+    WorkoutSet? maxSet;
+    for (var s in sets) {
+      if (maxSet == null || s.weight > maxSet.weight) {
+        maxSet = s;
+      }
+    }
+    return maxSet;
+  }
+
+  Future<WorkoutSet?> getPersonalRecord(String exerciseName) async {
+    return getHistoricalMaxWeight(exerciseName);
+  }
+
+  Future<WorkoutSet?> getLastSetForExercise(String exerciseName) async {
+    return (_database.select(_database.workoutSets)
+          ..where((s) => s.exerciseName.equals(exerciseName))
+          ..orderBy([
+            (s) => OrderingTerm(
+              expression: s.createdAt,
+              mode: OrderingMode.desc,
+            ),
+          ])
+          ..limit(1))
+        .getSingleOrNull();
+  }
+
+  Future<WorkoutLog?> getTodayWorkoutLog() async {
+    final now = DateTime.now();
+    final todayStart = DateTime(now.year, now.month, now.day);
+    final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+    return (_database.select(_database.workoutLogs)..where(
+          (l) => l.date.isBetweenValues(todayStart, todayEnd),
+        ))
+        .getSingleOrNull();
+  }
+
+  // --- 5. CRUD de Series Individuales ---
+  Future<String> addWorkoutSet({
+    required String workoutLogId,
+    required String exerciseName,
+    required double weight,
+    required int reps,
+  }) async {
+    final setId = _uuid.v4();
+    final now = DateTime.now();
+
+    await _database
+        .into(_database.workoutSets)
+        .insert(
+          WorkoutSetsCompanion.insert(
+            id: setId,
+            workoutLogId: workoutLogId,
+            exerciseName: exerciseName,
+            weight: weight,
+            reps: reps,
+            createdAt: Value(now),
+            isSynced: const Value(false),
+          ),
+        );
+
+    // Sync
+    _supabaseClient
+        .from('workout_sets')
+        .insert({
+          'id': setId,
+          'workout_log_id': workoutLogId,
+          'exercise_name': exerciseName,
+          'weight': weight,
+          'reps': reps,
+          'created_at': now.toIso8601String(),
+          'is_synced': true,
+          'user_id': _supabaseClient.auth.currentUser?.id,
+        })
+        .then((_) {
+          (_database.update(_database.workoutSets)
+                ..where((s) => s.id.equals(setId)))
+              .write(const WorkoutSetsCompanion(isSynced: Value(true)));
+        })
+        .catchError((e) => print('Error sync set: $e'));
+
+    return setId;
+  }
+
+  Future<void> updateWorkoutSet(String setId, double weight, int reps) async {
+    await (_database.update(
+      _database.workoutSets,
+    )..where((s) => s.id.equals(setId))).write(
+      WorkoutSetsCompanion(
+        weight: Value(weight),
+        reps: Value(reps),
+        isSynced: const Value(false),
+      ),
+    );
+
+    // Sync
+    _supabaseClient
+        .from('workout_sets')
+        .update({'weight': weight, 'reps': reps})
+        .eq('id', setId)
+        .then((_) {
+          (_database.update(_database.workoutSets)
+                ..where((s) => s.id.equals(setId)))
+              .write(const WorkoutSetsCompanion(isSynced: Value(true)));
+        })
+        .catchError((e) => print('Error sync update set: $e'));
+  }
+
+  Future<void> deleteWorkoutSet(String setId) async {
+    // 1. Registrar borrado pendiente
+    await _database.into(_database.pendingSyncActions).insert(
+          PendingSyncActionsCompanion.insert(
+            localTable: 'workout_sets',
+            itemId: setId,
+            action: 'DELETE',
+          ),
+        );
+
+    // 2. Borrado local
+    await (_database.delete(
+      _database.workoutSets,
+    )..where((s) => s.id.equals(setId))).go();
+
+    // 3. Intento inmediato
+    try {
+      await _supabaseClient.from('workout_sets').delete().eq('id', setId);
+      await (_database.delete(_database.pendingSyncActions)
+            ..where((t) => t.localTable.equals('workout_sets') & t.itemId.equals(setId)))
+          .go();
+    } catch (e) {
+      print('Set borrado localmente. Pendiente de sync.');
+    }
+  }
+}

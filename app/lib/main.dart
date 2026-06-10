@@ -3,11 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:app/widgets/create_habit_modal.dart';
-import 'package:app/widgets/create_template_modal.dart';
 import 'package:app/widgets/create_task_modal.dart';
 import 'package:app/widgets/create_roadmap_modal.dart';
 import 'package:app/home_tab.dart';
-import 'package:app/gym_tab.dart';
 import 'package:app/sync_provider.dart';
 import 'package:app/services/sync_service.dart';
 import 'package:app/notes_provider.dart';
@@ -107,12 +105,10 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
 
   final List<Widget> _tabs = const [
     HomeTab(),
-    GymTab(),
   ];
 
   final List<String> _titles = const [
     'Hoy',
-    'Gimnasio',
   ];
 
   @override
@@ -142,40 +138,8 @@ class _MainNavigationScreenState extends ConsumerState<MainNavigationScreen> {
         index: _currentIndex,
         children: _tabs,
       ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _currentIndex,
-        onDestinationSelected: (index) {
-          setState(() {
-            _currentIndex = index;
-          });
-        },
-        backgroundColor: const Color(0xFF121212),
-        indicatorColor: Theme.of(context).colorScheme.primary.withOpacity(0.2),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.today_outlined),
-            selectedIcon: Icon(Icons.today),
-            label: 'Hoy',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.fitness_center_outlined),
-            selectedIcon: Icon(Icons.fitness_center),
-            label: 'Gym',
-          ),
-        ],
-      ),
       floatingActionButton: FloatingActionButton(
         onPressed: () {
-          // Si estamos en la pestaña Gym, el FAB solo crea Rutinas.
-          if (_currentIndex == 1) {
-            showModalBottomSheet(
-              context: context,
-              isScrollControlled: true,
-              backgroundColor: Colors.transparent,
-              builder: (context) => const CreateTemplateModal(),
-            );
-            return;
-          }
 
           // Si estamos en "Hoy", mostramos el menú principal de creación
           showModalBottomSheet(

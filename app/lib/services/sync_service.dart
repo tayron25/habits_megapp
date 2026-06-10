@@ -25,21 +25,17 @@ class SyncService {
         _syncTasks(),
         _syncNotes(),
         _syncRoadmaps(),
-        _syncWorkoutTemplates(),
       ]);
 
       // NIVEL 3: Dependen de entidades de Nivel 2
       await Future.wait([
         _syncHabitLogs(),
         _syncRoadmapMilestones(),
-        _syncTemplateExercises(),
-        _syncWorkoutLogs(),
       ]);
 
       // NIVEL 4: Dependen de entidades de Nivel 3 (y WorkoutLogs)
       await Future.wait([
         _syncMilestoneTasks(),
-        _syncWorkoutSets(),
       ]);
 
       print('✅ Sync Pull completado exitosamente.');
@@ -218,87 +214,6 @@ class SyncService {
     }
   }
 
-  Future<void> _syncWorkoutTemplates() async {
-    try {
-      final data = await _supabaseClient.from('workout_templates').select();
-      final companions = data.map((row) => WorkoutTemplatesCompanion(
-            id: Value(row['id'] as String),
-            name: Value(row['name'] as String),
-            createdAt: Value(DateTime.parse(row['created_at'] as String)),
-            isSynced: const Value(true),
-          ));
-
-      await _database.batch((batch) {
-        batch.insertAll(_database.workoutTemplates, companions, mode: InsertMode.insertOrReplace);
-      });
-      print('✅ Sync OK: workout_templates');
-    } catch (e) {
-      print('❌ Error en Sync Pull de workout_templates: $e');
-    }
-  }
-
-  Future<void> _syncTemplateExercises() async {
-    try {
-      final data = await _supabaseClient.from('template_exercises').select();
-      final companions = data.map((row) => TemplateExercisesCompanion(
-            id: Value(row['id'] as String),
-            templateId: Value(row['template_id'] as String),
-            muscleGroup: Value(row['muscle_group'] as String),
-            exerciseName: Value(row['exercise_name'] as String),
-            supersetId: Value(row['superset_id'] as String?),
-            createdAt: Value(DateTime.parse(row['created_at'] as String)),
-            isSynced: const Value(true),
-          ));
-
-      await _database.batch((batch) {
-        batch.insertAll(_database.templateExercises, companions, mode: InsertMode.insertOrReplace);
-      });
-      print('✅ Sync OK: template_exercises');
-    } catch (e) {
-      print('❌ Error en Sync Pull de template_exercises: $e');
-    }
-  }
-
-  Future<void> _syncWorkoutLogs() async {
-    try {
-      final data = await _supabaseClient.from('workout_logs').select();
-      final companions = data.map((row) => WorkoutLogsCompanion(
-            id: Value(row['id'] as String),
-            templateId: Value(row['template_id'] as String?),
-            date: Value(DateTime.parse(row['date'] as String)),
-            isSynced: const Value(true),
-          ));
-
-      await _database.batch((batch) {
-        batch.insertAll(_database.workoutLogs, companions, mode: InsertMode.insertOrReplace);
-      });
-      print('✅ Sync OK: workout_logs');
-    } catch (e) {
-      print('❌ Error en Sync Pull de workout_logs: $e');
-    }
-  }
-
-  Future<void> _syncWorkoutSets() async {
-    try {
-      final data = await _supabaseClient.from('workout_sets').select();
-      final companions = data.map((row) => WorkoutSetsCompanion(
-            id: Value(row['id'] as String),
-            workoutLogId: Value(row['workout_log_id'] as String),
-            exerciseName: Value(row['exercise_name'] as String),
-            weight: Value((row['weight'] as num).toDouble()),
-            reps: Value(row['reps'] as int),
-            createdAt: row['created_at'] != null ? Value(DateTime.parse(row['created_at'] as String)) : const Value.absent(),
-            isSynced: const Value(true),
-          ));
-
-      await _database.batch((batch) {
-        batch.insertAll(_database.workoutSets, companions, mode: InsertMode.insertOrReplace);
-      });
-      print('✅ Sync OK: workout_sets');
-    } catch (e) {
-      print('❌ Error en Sync Pull de workout_sets: $e');
-    }
-  }
 
   /// Repara fechas que fueron guardadas ingenuamente sin zona horaria
   /// Si detecta que es UTC puro a las 00:00:00, lo asume como un local date erróneo.
