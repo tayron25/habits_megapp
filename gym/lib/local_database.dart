@@ -25,6 +25,9 @@ class TemplateExercises extends Table {
   TextColumn get muscleGroup => text()();
   TextColumn get exerciseName => text()();
   TextColumn get supersetId => text().nullable()();
+  TextColumn get progressionRule => text().nullable()();
+  IntColumn get progressionTargetReps => integer().nullable()();
+  RealColumn get progressionTargetWeightIncrease => real().nullable()();
   DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
   BoolColumn get isSynced => boolean().clientDefault(() => false)();
 
@@ -50,6 +53,7 @@ class WorkoutSets extends Table {
   TextColumn get exerciseName => text()();
   RealColumn get weight => real()(); // Real permite decimales (ej. 12.5 kg)
   IntColumn get reps => integer()();
+  TextColumn get note => text().nullable()();
   DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
   BoolColumn get isSynced => boolean().clientDefault(() => false)();
 
@@ -65,25 +69,66 @@ class PendingSyncActions extends Table {
   DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
 }
 
+// 5. Entrenamientos Planificados (Calendario)
+class PlannedWorkouts extends Table {
+  TextColumn get id => text()();
+  TextColumn get templateId => text().nullable()();
+  DateTimeColumn get plannedDate => dateTime()(); 
+  BoolColumn get isCompleted => boolean().clientDefault(() => false)();
+  DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
+  BoolColumn get isSynced => boolean().clientDefault(() => false)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
+// 6. Metas por Ejercicio en un Entrenamiento Planificado
+class PlannedExercises extends Table {
+  TextColumn get id => text()();
+  TextColumn get plannedWorkoutId => text()();
+  TextColumn get exerciseName => text()();
+  RealColumn get targetWeight => real().nullable()();
+  IntColumn get targetReps => integer().nullable()();
+  DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
+  BoolColumn get isSynced => boolean().clientDefault(() => false)();
+
+  @override
+  Set<Column> get primaryKey => {id};
+}
+
 // --- CONFIGURACIÓN DE LA BASE DE DATOS ---
 @DriftDatabase(tables: [
   WorkoutTemplates,
   TemplateExercises,
   WorkoutLogs,
   WorkoutSets,
-  PendingSyncActions
+  PendingSyncActions,
+  PlannedWorkouts,
+  PlannedExercises
 ])
 class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 1;
+  int get schemaVersion => 3;
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (Migrator m) async {
         await m.createAll();
+      },
+      onUpgrade: (Migrator m, int from, int to) async {
+        if (from < 2) {
+          await m.addColumn(workoutSets, workoutSets.note);
+          await m.createTable(plannedWorkouts);
+          await m.createTable(plannedExercises);
+        }
+        if (from < 3) {
+          await m.addColumn(templateExercises, templateExercises.progressionRule);
+          await m.addColumn(templateExercises, templateExercises.progressionTargetReps);
+          await m.addColumn(templateExercises, templateExercises.progressionTargetWeightIncrease);
+        }
       },
       beforeOpen: (details) async {
         await customStatement('PRAGMA foreign_keys = ON');

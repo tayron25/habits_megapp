@@ -1,11 +1,20 @@
 import 'package:app/local_database.dart';
+import 'package:app/life_areas_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/roadmaps_provider.dart';
 
 class CreateRoadmapModal extends ConsumerStatefulWidget {
   final Roadmap? existingRoadmap;
-  const CreateRoadmapModal({super.key, this.existingRoadmap});
+  final bool initialShowOnHome;
+  final String? initialLifeAreaId;
+
+  const CreateRoadmapModal({
+    super.key,
+    this.existingRoadmap,
+    this.initialShowOnHome = true,
+    this.initialLifeAreaId,
+  });
 
   @override
   ConsumerState<CreateRoadmapModal> createState() => _CreateRoadmapModalState();
@@ -14,10 +23,14 @@ class CreateRoadmapModal extends ConsumerStatefulWidget {
 class _CreateRoadmapModalState extends ConsumerState<CreateRoadmapModal> {
   final TextEditingController _titleController = TextEditingController();
   final TextEditingController _descController = TextEditingController();
+  late bool _showOnHome;
+  String? _lifeAreaId;
 
   @override
   void initState() {
     super.initState();
+    _showOnHome = widget.initialShowOnHome;
+    _lifeAreaId = widget.initialLifeAreaId;
     if (widget.existingRoadmap != null) {
       _titleController.text = widget.existingRoadmap!.title;
       _descController.text = widget.existingRoadmap!.description ?? '';
@@ -41,12 +54,16 @@ class _CreateRoadmapModalState extends ConsumerState<CreateRoadmapModal> {
       ref.read(roadmapsProvider.notifier).createRoadmap(
             title,
             desc.isEmpty ? null : desc,
+            showOnHome: _showOnHome,
+            lifeAreaId: _lifeAreaId,
           );
     } else {
       ref.read(roadmapsProvider.notifier).updateRoadmap(
             widget.existingRoadmap!.id,
             title,
             desc.isEmpty ? null : desc,
+            showOnHome: _showOnHome,
+            lifeAreaId: _lifeAreaId,
           );
     }
 
@@ -56,6 +73,7 @@ class _CreateRoadmapModalState extends ConsumerState<CreateRoadmapModal> {
   @override
   Widget build(BuildContext context) {
     final colors = Theme.of(context).colorScheme;
+    final lifeAreas = ref.watch(lifeAreasProvider);
 
     return Material(
       color: Colors.transparent,
@@ -112,6 +130,45 @@ class _CreateRoadmapModalState extends ConsumerState<CreateRoadmapModal> {
                   maxLines: 3,
                   style: const TextStyle(color: Colors.white70, fontSize: 14),
                   decoration: _inputDecoration('Descripción o motivación (opcional)', colors.primary),
+                ),
+                const SizedBox(height: 12),
+                lifeAreas.when(
+                  data: (areas) => DropdownButtonFormField<String?>(
+                    value: _lifeAreaId,
+                    dropdownColor: const Color(0xFF1A1A1A),
+                    style: const TextStyle(color: Colors.white),
+                    decoration: _inputDecoration('Area de vida (opcional)', colors.primary),
+                    items: [
+                      const DropdownMenuItem<String?>(
+                        value: null,
+                        child: Text('Sin area'),
+                      ),
+                      ...areas.map(
+                        (area) => DropdownMenuItem<String?>(
+                          value: area.id,
+                          child: Text(area.name),
+                        ),
+                      ),
+                    ],
+                    onChanged: (value) => setState(() => _lifeAreaId = value),
+                  ),
+                  loading: () => const SizedBox.shrink(),
+                  error: (_, __) => const SizedBox.shrink(),
+                ),
+                const SizedBox(height: 12),
+                SwitchListTile(
+                  contentPadding: EdgeInsets.zero,
+                  value: _showOnHome,
+                  activeColor: colors.primary,
+                  title: const Text(
+                    'Mostrar accion en Hoy',
+                    style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+                  ),
+                  subtitle: const Text(
+                    'Si esta activo, su siguiente tarea pendiente aparece junto a Habitos.',
+                    style: TextStyle(color: Colors.white54, fontSize: 12),
+                  ),
+                  onChanged: (value) => setState(() => _showOnHome = value),
                 ),
                 const SizedBox(height: 20),
 

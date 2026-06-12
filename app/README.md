@@ -1,89 +1,77 @@
 # Life OS
 
-Una aplicación móvil integral de productividad personal orientada a registrar y analizar datos del día a día. El objetivo principal no es solo registrar la información, sino construir un motor analítico (con gráficos e historiales) para medir el progreso y el balance de vida.
+Aplicacion movil de productividad personal orientada a registrar datos del dia a dia y convertirlos en analitica accionable. Life OS es la app principal del ecosistema: captura habitos, tareas, notas, areas de vida y roadmaps.
 
-## 🛠 Stack Tecnológico y Arquitectura
+Gym Tracker fue extraido a `../gym` como aplicacion independiente, pero ambas apps comparten Supabase para autenticacion, sincronizacion y futuras analiticas cruzadas.
 
-- **Frontend / UI:** Flutter (Multiplataforma).
-- **Gestor de Estado:** Riverpod con generación de código (`riverpod_annotation`, `@riverpod`).
-- **Base de Datos Local (Fuente de Verdad):** Drift (SQLite).
-- **Base de Datos Remota (Sincronización en 2do plano):** Supabase (PostgreSQL).
+## Stack
 
-**Arquitectura Offline-First:** 
-La UI lee de la base de datos local usando Streams (`ref.watch`). Al crear/editar un elemento, se inserta primero en SQLite localmente y luego se intenta subir a Supabase. Todos los modelos tienen un campo `isSynced` (booleano) y un `id` generado localmente con el paquete `uuid`.
+- Flutter / Dart.
+- Riverpod con generacion de codigo.
+- Drift sobre SQLite como base local.
+- Supabase Auth y PostgreSQL como backend remoto.
+- Arquitectura offline-first.
 
----
+## Arquitectura Local
 
-## ⚠️ REGLAS CRÍTICAS DE DESARROLLO (¡LEER SIEMPRE!)
+La UI lee desde SQLite local usando Streams y Riverpod. Las escrituras se aplican primero en Drift y luego se intentan subir a Supabase. Las entidades sincronizadas usan IDs locales con UUID y un campo `isSynced`.
 
-> **ATENCIÓN AGENTES DE IA:** Este proyecto se desarrolla de forma intermitente y en múltiples máquinas. Para no depender de la memoria de la IA de cada sesión, **DEBES ACTUALIZAR ESTE README CADA VEZ QUE HAGAS UN CAMBIO ESTRUCTURAL O AÑADAS UN FEATURE**. Este archivo es la única fuente de verdad garantizada.
+El esquema local esta en la version 15 y contiene:
 
-1. **Scripts de Supabase (SQL) sin restricciones:** SIEMPRE que se te pida generar código SQL para crear o modificar tablas en Supabase, **DEBES INCLUIR** los permisos para el rol anónimo y desactivar la seguridad por fila temporalmente para el MVP. Es obligatorio añadir al final de tus scripts:
-   ```sql
-   GRANT SELECT, INSERT, UPDATE, DELETE ON public.<nombre_tabla> TO anon;
-   ALTER TABLE <nombre_tabla> DISABLE ROW LEVEL SECURITY;
-   ```
-2. **Importaciones Absolutas:** Usar SIEMPRE importaciones absolutas (`import 'package:app/archivo.dart';`). NUNCA usar importaciones relativas entre archivos que usan autogeneración (ej. `import '../archivo.dart'`).
-3. **Typedefs para Streams de Drift en Riverpod:** Al crear `Notifiers` que devuelven un `Stream` de una lista de Drift, NUNCA uses tipos genéricos anidados profundamente en el `build()`.
-    - ❌ *Incorrecto:* `Stream<List<Task>> build()`
-    - ✅ *Correcto:* `typedef TasksList = List<Task>;` y luego `Stream<TasksList> build()`.
-4. **Nombre de Providers Generados:** Al usar `@riverpod class TareasNotifier extends _$TareasNotifier`, el provider generado automáticamente pierde la palabra "Notifier". Para leerlo desde la UI se debe usar su nombre convertido a minúsculas: `ref.watch(tareasProvider)`.
+- `LifeAreas`: areas de vida.
+- `Notes`: capturas rapidas.
+- `Habits`: habitos avanzados.
+- `HabitLogs`: registros diarios de habitos.
+- `Tasks`: tareas puntuales.
+- `Roadmaps`: metas de largo plazo.
+- `RoadmapMilestones`: hitos de roadmaps.
+- `MilestoneTasks`: checklist de hitos.
+- `PendingSyncActions`: cola de acciones offline.
+- `activity_events`: linea de tiempo analitica comun para acciones importantes.
 
----
+## Modulos
 
-## 🏗️ Estado Actual del Desarrollo
+- Areas de vida: categorizacion transversal para habitos, tareas y analiticas.
+- Habitos V3: vigencia, frecuencia, metas por periodo, horario y area asociada.
+- Tareas: prioridad, fecha de vencimiento opcional, fecha planificada, origen, relacion con areas de vida y cierre como hecha/no hecha sin borrar historial.
+- Notas/Ideas: captura rapida sin categorizar. Al procesarlas se pueden asociar a un area de vida o descartar de la bandeja, pero quedan registradas como log y pueden rastrear conversion futura a otras entidades.
+- Roadmaps: metas, hitos y tareas para medir avance. Preparados para asociarse a areas de vida y guardar `completed_at` en tareas de milestone.
+- Autenticacion y sync: sesiones Supabase, push/pull y cola offline.
 
-El esquema actual de base de datos local (Drift) está en la **versión 11 (v11)** con 9 tablas operativas en el ecosistema Life OS (El módulo de Gimnasio ha sido extraído a su propia aplicación independiente en la carpeta `/gym`):
+## Datos y Analitica
 
-- **Módulo Áreas de Vida:** Tabla `LifeAreas` (`id`, `name`, `icon`, `createdAt`, `isSynced`).
-- **Módulo Notas (Quick Captures):** Tabla `Notes` (`id`, `content`, `createdAt`, `isSynced`).
-- **Módulo Hábitos (V3):** Tablas `Habits` (avanzada con `startDate`, `endDate`, `repeatMode`, `goalAmount`, `goalPeriod`, `timeOfDay`, `lifeAreaId`) y `HabitLogs` (registro diario).
-- **Módulo Tareas (To-Do):** Tabla `Tasks` (`title`, `description`, `priority`, `dueDate`, `lifeAreaId`, `isCompleted`).
-- **Módulo Roadmaps (Metas Largo Plazo):** Tablas `Roadmaps` (meta global), `RoadmapMilestones` (hitos) y `MilestoneTasks` (checklist de hitos).
-- **Módulo de Sincronización:** Tabla `PendingSyncActions` (Cola de sincronización offline para gestionar eliminaciones y fallos de red).
+Life OS guarda datos pensando en analisis futuro:
 
-La interfaz gráfica principal (`main.dart` - Pantalla Hoy) está estructurada de forma vertical, mostrando únicamente la información relevante para **el día de hoy** (ej. los hábitos se filtran reactivamente para no mostrar los que expiran o no tocan hoy). El `FloatingActionButton` centraliza la creación de cualquier entidad mediante modales (`showModalBottomSheet`).
+- Todas las entidades principales usan UUID, `created_at`, sync offline y `user_id` remoto.
+- `life_area_id` funciona como dimension transversal para habitos, tareas, notas y roadmaps.
+- Las acciones de cierre conservan estado y fecha: tareas `done/missed`, notas `categorized/discarded`, tareas de roadmap `done/active`.
+- `activity_events` registra eventos como `habit_completed`, `task_done`, `task_missed`, `note_captured` y `roadmap_task_completed`.
+- La app separa fechas de intencion y ejecucion cuando importa: por ejemplo `planned_date` vs `completed_at`, y `target_date` vs `logged_at` en habitos.
 
----
+## Pantalla Principal
 
-## 🎯 Módulos Implementados
+La pantalla Hoy muestra informacion relevante para el dia actual. Los habitos se filtran reactivamente para no mostrar habitos expirados o que no corresponden al dia. El `FloatingActionButton` centraliza la creacion de entidades mediante modales.
 
-### 1. Hábitos Avanzados (V3)
-Sistema dinámico para construir consistencia.
-- Fechas de vigencia (Inicio / Fin opcional).
-- Frecuencia personalizable (Diario, Mensual, Intervalos) con metas dinámicas (veces por día, semana, mes, año).
-- Asociados fuertemente a las "Áreas de Vida".
-- Filtrado inteligente reactivo.
+## Como Ejecutar
 
-### 2. Gimnasio (App Independiente)
-*Nota: Este módulo fue extraído al proyecto hermano en `/gym` para un enfoque especializado, pero comparte la misma base de datos remota Supabase.*
+```bash
+flutter pub get
+dart run build_runner build -d
+flutter run
+```
 
-### 3. Tareas Únicas (To-Do List)
-Gestor de acciones puntuales.
-- Prioridades (Alta, Media, Baja) indicadas visualmente con colores.
-- Fecha de vencimiento opcional con widget de cuenta regresiva en lenguaje natural.
-- Vinculación a Áreas de Vida (categorización transversal).
+Ejecuta `dart run build_runner build -d` cuando cambies tablas Drift o providers con generacion.
 
-### 4. Notas (Quick Captures)
-Espacio de "fricción cero" para capturar pensamientos al vuelo en texto plano.
+## Documentacion Relacionada
 
-### 5. Roadmaps (Metas a Largo Plazo)
-Gestor de proyectos macro.
-- Permite desglosar un objetivo en múltiples "Hitos" (Milestones).
-- Calcula el porcentaje de avance global en base a las tareas específicas de cada hito marcadas como completadas.
+- [Arquitectura general](../docs/ARCHITECTURE.md)
+- [Supabase y RLS](../docs/SUPABASE.md)
+- [Sincronizacion](../docs/SYNC.md)
+- [Roadmap](../docs/ROADMAP.md)
 
-### 6. Autenticación y Sincronización Multi-Tenant
-Arquitectura resiliente (Offline-first) con cuentas de usuario.
-- **Autenticación con Supabase:** Inicio de sesión y manejo de sesiones.
-- **Sincronización Estricta (Niveles):** El `Sync Pull` se ejecuta en 4 niveles para respetar forzosamente las claves foráneas en SQLite.
-- **Cola Offline:** Se utiliza `PendingSyncActions` para guardar acciones de eliminación (y otras) que ocurren sin conexión y reintentarlas al recuperar la red.
+## Reglas de Desarrollo
 
----
-
-## 📊 Módulo Analítico (El Core - Pendiente)
-
-Toda la data generada hasta ahora (`v8`) está preparada para alimentar el módulo de Inteligencia de Negocios Personal mediante cruces de información:
-- Gráficos históricos de cumplimiento de hábitos.
-- Progresión de cargas en gimnasio a lo largo del tiempo.
-- Distribución de tiempo/esfuerzo en las nuevas "Áreas de Vida" (cruzando Hábitos, Tareas y Roadmaps).
-- Análisis de horarios de máxima productividad usando metadata de Notas y Tareas (`createdAt`).
+- Actualizar este README o `docs/` cuando cambie una feature, estructura o decision importante.
+- Usar imports absolutos: `package:app/...`.
+- No agregar codigo de gimnasio dentro de `app/`; Gym vive en `../gym`.
+- Los scripts SQL deben usar `authenticated`, RLS habilitado y politicas por `user_id`.

@@ -18,11 +18,60 @@ class SyncRepository {
       await _syncDeletions();
       await _syncWorkoutTemplates();
       await _syncTemplateExercises();
+      await _syncPlannedWorkouts();
+      await _syncPlannedExercises();
       await _syncWorkoutLogs();
       await _syncWorkoutSets();
       print('✅ Sincronización finalizada con éxito.');
     } catch (e) {
       print('❌ Error general durante la sincronización: $e');
+    }
+  }
+
+  Future<void> _syncPlannedWorkouts() async {
+    final unsynced = await (_database.select(_database.plannedWorkouts)
+      ..where((t) => t.isSynced.equals(false))).get();
+    for (final item in unsynced) {
+      try {
+        await _supabase.from('planned_workouts').upsert({
+          'id': item.id,
+          'template_id': item.templateId,
+          'planned_date': item.plannedDate.toIso8601String(),
+          'is_completed': item.isCompleted,
+          'created_at': item.createdAt.toIso8601String(),
+          'is_synced': true,
+          'user_id': _supabase.auth.currentUser?.id,
+        });
+        await (_database.update(_database.plannedWorkouts)
+              ..where((t) => t.id.equals(item.id)))
+            .write(const PlannedWorkoutsCompanion(isSynced: Value(true)));
+      } catch (e) {
+        print('Error en sync de PlannedWorkouts: $e');
+      }
+    }
+  }
+
+  Future<void> _syncPlannedExercises() async {
+    final unsynced = await (_database.select(_database.plannedExercises)
+      ..where((t) => t.isSynced.equals(false))).get();
+    for (final item in unsynced) {
+      try {
+        await _supabase.from('planned_exercises').upsert({
+          'id': item.id,
+          'planned_workout_id': item.plannedWorkoutId,
+          'exercise_name': item.exerciseName,
+          'target_weight': item.targetWeight,
+          'target_reps': item.targetReps,
+          'created_at': item.createdAt.toIso8601String(),
+          'is_synced': true,
+          'user_id': _supabase.auth.currentUser?.id,
+        });
+        await (_database.update(_database.plannedExercises)
+              ..where((t) => t.id.equals(item.id)))
+            .write(const PlannedExercisesCompanion(isSynced: Value(true)));
+      } catch (e) {
+        print('Error en sync de PlannedExercises: $e');
+      }
     }
   }
 
@@ -79,6 +128,9 @@ class SyncRepository {
           'muscle_group': item.muscleGroup,
           'exercise_name': item.exerciseName,
           'superset_id': item.supersetId,
+          'progression_rule': item.progressionRule,
+          'progression_target_reps': item.progressionTargetReps,
+          'progression_target_weight_increase': item.progressionTargetWeightIncrease,
           'created_at': item.createdAt.toIso8601String(),
           'is_synced': true,
           'user_id': _supabase.auth.currentUser?.id,
@@ -126,6 +178,7 @@ class SyncRepository {
           'exercise_name': item.exerciseName,
           'weight': item.weight,
           'reps': item.reps,
+          'note': item.note,
           'created_at': item.createdAt.toIso8601String(),
           'is_synced': true,
           'user_id': _supabase.auth.currentUser?.id,
@@ -147,10 +200,10 @@ class SyncRepository {
       ]);
       await Future.wait([
         _pullTemplateExercises(),
-        _pullWorkoutLogs(),
-      ]);
-      await Future.wait([
-        _pullWorkoutSets(),
+        _syncPullTable('workout_logs', _database.workoutLogs),
+        _syncPullTable('workout_sets', _database.workoutSets),
+        _syncPullTable('planned_workouts', _database.plannedWorkouts),
+        _syncPullTable('planned_exercises', _database.plannedExercises),
       ]);
       print('✅ Sync Pull completado exitosamente.');
     } catch (e) {
@@ -171,6 +224,13 @@ class SyncRepository {
       await _database.batch((batch) {
         batch.insertAll(_database.workoutTemplates, companions, mode: InsertMode.insertOrReplace);
       });
+
+      final remoteIds = data.map((row) => row['id'] as String).toList();
+      if (remoteIds.isEmpty) {
+        await (_database.delete(_database.workoutTemplates)..where((t) => t.isSynced.equals(true))).go();
+      } else {
+        await (_database.delete(_database.workoutTemplates)..where((t) => t.id.isNotIn(remoteIds) & t.isSynced.equals(true))).go();
+      }
     } catch (e) {
       print('❌ Error en Sync Pull de workout_templates: $e');
     }
@@ -185,54 +245,100 @@ class SyncRepository {
             muscleGroup: Value(row['muscle_group'] as String),
             exerciseName: Value(row['exercise_name'] as String),
             supersetId: Value(row['superset_id'] as String?),
-            createdAt: Value(DateTime.parse(row['created_at'] as String)),
+            progressionRule: Value(row['progression_rule'] as String?),
+            progressionTargetReps: Value(row['progression_target_reps'] as int?),
+            progressionTargetWeightIncrease: Value(row['progression_target_weight_increase'] != null ? double.parse(row['progression_target_weight_increase'].toString()) : null),
+            createdAt: row['created_at'] != null ? Value(DateTime.parse(row['created_at'] as String)) : const Value.absent(),
             isSynced: const Value(true),
           ));
 
       await _database.batch((batch) {
         batch.insertAll(_database.templateExercises, companions, mode: InsertMode.insertOrReplace);
       });
+
+      final remoteIds = data.map((row) => row['id'] as String).toList();
+      if (remoteIds.isEmpty) {
+        await (_database.delete(_database.templateExercises)..where((t) => t.isSynced.equals(true))).go();
+      } else {
+        await (_database.delete(_database.templateExercises)..where((t) => t.id.isNotIn(remoteIds) & t.isSynced.equals(true))).go();
+      }
     } catch (e) {
       print('❌ Error en Sync Pull de template_exercises: $e');
     }
   }
 
-  Future<void> _pullWorkoutLogs() async {
+  Future<void> _syncPullTable(String tableName, Table table) async {
     try {
-      final data = await _supabase.from('workout_logs').select();
-      final companions = data.map((row) => WorkoutLogsCompanion(
-            id: Value(row['id'] as String),
-            templateId: Value(row['template_id'] as String?),
-            date: Value(DateTime.parse(row['date'] as String)),
+      final data = await _supabase.from(tableName).select();
+      await _database.batch((batch) {
+        if (table == _database.workoutLogs) {
+          final companions = data.map((row) => WorkoutLogsCompanion(
+            id: Value(row['id']),
+            templateId: Value(row['template_id']),
+            date: Value(DateTime.parse(row['date'])),
             isSynced: const Value(true),
           ));
-
-      await _database.batch((batch) {
-        batch.insertAll(_database.workoutLogs, companions, mode: InsertMode.insertOrReplace);
-      });
-    } catch (e) {
-      print('❌ Error en Sync Pull de workout_logs: $e');
-    }
-  }
-
-  Future<void> _pullWorkoutSets() async {
-    try {
-      final data = await _supabase.from('workout_sets').select();
-      final companions = data.map((row) => WorkoutSetsCompanion(
-            id: Value(row['id'] as String),
-            workoutLogId: Value(row['workout_log_id'] as String),
-            exerciseName: Value(row['exercise_name'] as String),
-            weight: Value((row['weight'] as num).toDouble()),
-            reps: Value(row['reps'] as int),
-            createdAt: row['created_at'] != null ? Value(DateTime.parse(row['created_at'] as String)) : const Value.absent(),
+          batch.insertAll(_database.workoutLogs, companions, mode: InsertMode.insertOrReplace);
+        } else if (table == _database.workoutSets) {
+          final companions = data.map((row) => WorkoutSetsCompanion(
+            id: Value(row['id']),
+            workoutLogId: Value(row['workout_log_id']),
+            exerciseName: Value(row['exercise_name']),
+            weight: Value(double.parse(row['weight'].toString())),
+            reps: Value(row['reps']),
+            note: Value(row['note']),
+            createdAt: Value(DateTime.parse(row['created_at'])),
             isSynced: const Value(true),
           ));
-
-      await _database.batch((batch) {
-        batch.insertAll(_database.workoutSets, companions, mode: InsertMode.insertOrReplace);
+          batch.insertAll(_database.workoutSets, companions, mode: InsertMode.insertOrReplace);
+        } else if (table == _database.plannedWorkouts) {
+          final companions = data.map((row) => PlannedWorkoutsCompanion(
+            id: Value(row['id']),
+            templateId: Value(row['template_id']),
+            plannedDate: Value(DateTime.parse(row['planned_date'])),
+            isCompleted: Value(row['is_completed']),
+            createdAt: Value(DateTime.parse(row['created_at'])),
+            isSynced: const Value(true),
+          ));
+          batch.insertAll(_database.plannedWorkouts, companions, mode: InsertMode.insertOrReplace);
+        } else if (table == _database.plannedExercises) {
+          final companions = data.map((row) => PlannedExercisesCompanion(
+            id: Value(row['id']),
+            plannedWorkoutId: Value(row['planned_workout_id']),
+            exerciseName: Value(row['exercise_name']),
+            targetWeight: Value(row['target_weight'] != null ? double.parse(row['target_weight'].toString()) : null),
+            targetReps: Value(row['target_reps']),
+            createdAt: Value(DateTime.parse(row['created_at'])),
+            isSynced: const Value(true),
+          ));
+          batch.insertAll(_database.plannedExercises, companions, mode: InsertMode.insertOrReplace);
+        }
       });
+
+      final remoteIds = data.map((row) => row['id'] as String).toList();
+      if (remoteIds.isEmpty) {
+        if (table == _database.workoutLogs) {
+          await (_database.delete(_database.workoutLogs)..where((t) => t.isSynced.equals(true))).go();
+        } else if (table == _database.workoutSets) {
+          await (_database.delete(_database.workoutSets)..where((t) => t.isSynced.equals(true))).go();
+        } else if (table == _database.plannedWorkouts) {
+          await (_database.delete(_database.plannedWorkouts)..where((t) => t.isSynced.equals(true))).go();
+        } else if (table == _database.plannedExercises) {
+          await (_database.delete(_database.plannedExercises)..where((t) => t.isSynced.equals(true))).go();
+        }
+      } else {
+        if (table == _database.workoutLogs) {
+          await (_database.delete(_database.workoutLogs)..where((t) => t.id.isNotIn(remoteIds) & t.isSynced.equals(true))).go();
+        } else if (table == _database.workoutSets) {
+          await (_database.delete(_database.workoutSets)..where((t) => t.id.isNotIn(remoteIds) & t.isSynced.equals(true))).go();
+        } else if (table == _database.plannedWorkouts) {
+          await (_database.delete(_database.plannedWorkouts)..where((t) => t.id.isNotIn(remoteIds) & t.isSynced.equals(true))).go();
+        } else if (table == _database.plannedExercises) {
+          await (_database.delete(_database.plannedExercises)..where((t) => t.id.isNotIn(remoteIds) & t.isSynced.equals(true))).go();
+        }
+      }
     } catch (e) {
-      print('❌ Error en Sync Pull de workout_sets: $e');
+      print('❌ Error en Sync Pull de $tableName: $e');
     }
   }
 }

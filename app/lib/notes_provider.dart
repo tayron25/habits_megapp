@@ -1,6 +1,5 @@
 import 'package:app/local_database.dart';
 import 'package:app/notes_repository.dart';
-import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -31,7 +30,24 @@ class NotesNotifier extends _$NotesNotifier {
   @override
   Stream<NotesList> build() {
     final database = ref.watch(appDatabaseProvider);
-    return database.select(database.notes).watch();
+    return database
+        .customSelect(
+          "SELECT id, content, created_at, is_synced FROM notes WHERE status = 'captured' ORDER BY created_at DESC",
+          readsFrom: {database.notes},
+        )
+        .watch()
+        .map(
+          (rows) => rows
+              .map(
+                (row) => Note(
+                  id: row.read<String>('id'),
+                  content: row.read<String>('content'),
+                  createdAt: row.read<DateTime>('created_at'),
+                  isSynced: row.read<bool>('is_synced'),
+                ),
+              )
+              .toList(),
+        );
   }
 
   void addNote(String content) {
@@ -44,5 +60,9 @@ class NotesNotifier extends _$NotesNotifier {
 
   void removeNote(String id) {
     ref.read(notesRepositoryProvider).deleteNote(id);
+  }
+
+  void processNote(String id, {String? lifeAreaId}) {
+    ref.read(notesRepositoryProvider).processNote(id, lifeAreaId: lifeAreaId);
   }
 }

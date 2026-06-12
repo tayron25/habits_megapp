@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:app/habits_provider.dart';
+import 'package:app/life_areas_provider.dart';
+import 'package:app/local_database.dart';
 import 'package:app/notes_provider.dart';
 import 'package:app/tasks_provider.dart';
 import 'package:app/roadmaps_provider.dart';
@@ -45,8 +47,14 @@ void _showSmartDeleteDialog({
   required WidgetRef ref,
   required String type,
   required dynamic id,
+  dynamic item,
 }) {
-  if (type == 'note' || type == 'roadmap') {
+  if (type == 'note') {
+    _showProcessNoteDialog(context: context, ref: ref, note: item);
+    return;
+  }
+
+  if (type == 'roadmap') {
     showDialog(
       context: context,
       builder: (ctx) => AlertDialog(
@@ -57,7 +65,6 @@ void _showSmartDeleteDialog({
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
           TextButton(
             onPressed: () {
-              if (type == 'note') ref.read(notesProvider.notifier).removeNote(id);
               if (type == 'roadmap') ref.read(roadmapsProvider.notifier).deleteRoadmap(id);
               Navigator.pop(ctx);
             },
@@ -66,6 +73,8 @@ void _showSmartDeleteDialog({
         ],
       ),
     );
+  } else if (type == 'task') {
+    _showProcessTaskDialog(context: context, ref: ref, taskId: id);
   } else {
     showDialog(
       context: context,
@@ -94,6 +103,165 @@ void _showSmartDeleteDialog({
       ),
     );
   }
+}
+
+void _showProcessTaskDialog({
+  required BuildContext context,
+  required WidgetRef ref,
+  required String taskId,
+}) {
+  showDialog(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      backgroundColor: const Color(0xFF1A1A1A),
+      title: const Text('Que paso con esta tarea?', style: TextStyle(color: Colors.white)),
+      content: const Text(
+        'La quitaremos de la vista activa, pero quedara guardada como historial.',
+        style: TextStyle(color: Colors.white70),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(ctx),
+          child: const Text('Cancelar'),
+        ),
+        TextButton(
+          onPressed: () {
+            ref.read(tasksProvider.notifier).processTask(taskId, didComplete: false);
+            Navigator.pop(ctx);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Tarea registrada como no hecha')),
+            );
+          },
+          child: const Text('No se hizo', style: TextStyle(color: Colors.orangeAccent)),
+        ),
+        TextButton(
+          onPressed: () {
+            ref.read(tasksProvider.notifier).removeTask(taskId);
+            Navigator.pop(ctx);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Tarea eliminada definitivamente')),
+            );
+          },
+          child: const Text('Eliminar definitivamente', style: TextStyle(color: Colors.redAccent)),
+        ),
+        FilledButton(
+          onPressed: () {
+            ref.read(tasksProvider.notifier).processTask(taskId, didComplete: true);
+            Navigator.pop(ctx);
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Tarea completada y registrada')),
+            );
+          },
+          child: const Text('Se hizo'),
+        ),
+      ],
+    ),
+  );
+}
+
+void _showProcessNoteDialog({
+  required BuildContext context,
+  required WidgetRef ref,
+  required dynamic note,
+}) {
+  final rootContext = context;
+  String? selectedLifeAreaId;
+
+  showDialog(
+    context: context,
+    builder: (ctx) => Consumer(
+      builder: (dialogContext, ref, _) {
+        final areasAsync = ref.watch(lifeAreasProvider);
+
+        return StatefulBuilder(
+          builder: (context, setState) => AlertDialog(
+            backgroundColor: const Color(0xFF1A1A1A),
+            title: const Text('Procesar pensamiento', style: TextStyle(color: Colors.white)),
+            content: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  note.content,
+                  maxLines: 4,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(color: Colors.white70, height: 1.35),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'Asocialo a un area de vida o descartalo de Ideas. En ambos casos queda registrado.',
+                  style: TextStyle(color: Colors.white54, fontSize: 13),
+                ),
+                const SizedBox(height: 16),
+                areasAsync.when(
+                  loading: () => const Center(child: CircularProgressIndicator()),
+                  error: (error, _) => Text('Error cargando areas: $error', style: const TextStyle(color: Colors.redAccent)),
+                  data: (areas) {
+                    if (areas.isEmpty) {
+                      return const Text('No hay areas de vida todavia.', style: TextStyle(color: Colors.white38));
+                    }
+
+                    return Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: areas.map((area) {
+                        final selected = selectedLifeAreaId == area.id;
+                        return ChoiceChip(
+                          label: Text('${area.icon ?? ''} ${area.name}'.trim()),
+                          selected: selected,
+                          onSelected: (value) {
+                            setState(() => selectedLifeAreaId = value ? area.id : null);
+                          },
+                        );
+                      }).toList(),
+                    );
+                  },
+                ),
+              ],
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Cancelar'),
+              ),
+              TextButton(
+                onPressed: () {
+                  ref.read(notesProvider.notifier).processNote(note.id);
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(rootContext).showSnackBar(
+                    const SnackBar(content: Text('Pensamiento registrado y quitado de Ideas')),
+                  );
+                },
+                child: const Text('Descartar', style: TextStyle(color: Colors.white70)),
+              ),
+              TextButton(
+                onPressed: () {
+                  ref.read(notesProvider.notifier).removeNote(note.id);
+                  Navigator.pop(ctx);
+                  ScaffoldMessenger.of(rootContext).showSnackBar(
+                    const SnackBar(content: Text('Pensamiento eliminado definitivamente')),
+                  );
+                },
+                child: const Text('Eliminar definitivamente', style: TextStyle(color: Colors.redAccent)),
+              ),
+              FilledButton(
+                onPressed: selectedLifeAreaId == null
+                    ? null
+                    : () {
+                        ref.read(notesProvider.notifier).processNote(note.id, lifeAreaId: selectedLifeAreaId);
+                        Navigator.pop(ctx);
+                        ScaffoldMessenger.of(rootContext).showSnackBar(
+                          const SnackBar(content: Text('Pensamiento categorizado')),
+                        );
+                      },
+                child: const Text('Guardar en area'),
+              ),
+            ],
+          ),
+        );
+      },
+    ),
+  );
 }
 
 void _showOptionsBottomSheet({
@@ -125,20 +293,38 @@ void _showOptionsBottomSheet({
                 } else if (type == 'note') {
                   showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (c) => QuickCaptureModal(existingNote: item));
                 } else if (type == 'roadmap') {
-                  showModalBottomSheet(context: context, isScrollControlled: true, backgroundColor: Colors.transparent, builder: (c) => CreateRoadmapModal(existingRoadmap: item));
+                  final roadmapItem = item is RoadmapWithDetails ? item : null;
+                  final roadmap = roadmapItem?.roadmap ?? item;
+                  showModalBottomSheet(
+                    context: context,
+                    isScrollControlled: true,
+                    backgroundColor: Colors.transparent,
+                    builder: (c) => CreateRoadmapModal(
+                      existingRoadmap: roadmap,
+                      initialShowOnHome: roadmapItem?.showOnHome ?? true,
+                      initialLifeAreaId: roadmapItem?.lifeAreaId,
+                    ),
+                  );
                 }
               },
             ),
             ListTile(
-              leading: const Icon(Icons.delete_outline, color: Colors.redAccent),
-              title: const Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
+              leading: Icon(
+                (type == 'note' || type == 'task') ? Icons.done_all_rounded : Icons.delete_outline,
+                color: (type == 'note' || type == 'task') ? Colors.greenAccent : Colors.redAccent,
+              ),
+              title: Text(
+                (type == 'note' || type == 'task') ? 'Procesar' : 'Eliminar',
+                style: TextStyle(color: (type == 'note' || type == 'task') ? Colors.greenAccent : Colors.redAccent),
+              ),
               onTap: () {
                 Navigator.pop(ctx);
                 _showSmartDeleteDialog(
                   context: context,
                   ref: ref,
                   type: type,
-                  id: type == 'habit' ? item.habit.id : item.id,
+                  id: type == 'habit' ? item.habit.id : (type == 'roadmap' && item is RoadmapWithDetails ? item.roadmap.id : item.id),
+                  item: item,
                 );
               },
             ),
@@ -353,13 +539,17 @@ class HomeTab extends ConsumerWidget {
                     );
                   },
                 ),
+                const SizedBox(height: 12),
+                const _NextRoadmapActions(),
               ],
             ),
           ),
 
           // --- SECCIÓN ROADMAPS ---
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+          Offstage(
+            offstage: true,
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -446,7 +636,7 @@ class HomeTab extends ConsumerWidget {
                                       context: context,
                                       ref: ref,
                                       type: 'roadmap',
-                                      item: roadmap,
+                                      item: roadmapItem,
                                     );
                                   },
                                   child: Padding(
@@ -468,14 +658,28 @@ class HomeTab extends ConsumerWidget {
                                                 ),
                                               ),
                                             ),
-                                            Text(
-                                              '${(progress * 100).toStringAsFixed(0)}%',
-                                              style: TextStyle(
-                                                color: Theme.of(
-                                                  context,
-                                                ).colorScheme.primary,
-                                                fontWeight: FontWeight.bold,
-                                              ),
+                                            Column(
+                                              crossAxisAlignment: CrossAxisAlignment.end,
+                                              children: [
+                                                Text(
+                                                  '${(progress * 100).toStringAsFixed(0)}%',
+                                                  style: TextStyle(
+                                                    color: Theme.of(
+                                                      context,
+                                                    ).colorScheme.primary,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                                const SizedBox(height: 3),
+                                                Text(
+                                                  roadmapItem.showOnHome ? 'En Hoy' : 'Oculto',
+                                                  style: TextStyle(
+                                                    color: roadmapItem.showOnHome ? const Color(0xFF8FD8FF) : Colors.white38,
+                                                    fontSize: 11,
+                                                    fontWeight: FontWeight.w600,
+                                                  ),
+                                                ),
+                                              ],
                                             ),
                                           ],
                                         ),
@@ -505,6 +709,8 @@ class HomeTab extends ConsumerWidget {
           ),
 
           // --- SECCIÓN TAREAS PENDIENTES ---
+          ),
+
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
             child: Column(
@@ -706,6 +912,7 @@ class HomeTab extends ConsumerWidget {
               ),
             ],
           ),
+          const _RoadmapsSection(),
           // Agregamos un poco de espacio al final para que quede mejor al scrollear
           const SizedBox(height: 80),
         ],
@@ -715,6 +922,303 @@ class HomeTab extends ConsumerWidget {
 }
 
 // --- WIDGET INTERACTIVO DE TAREA (Acordeón) ---
+class _RoadmapsSection extends ConsumerWidget {
+  const _RoadmapsSection();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final roadmapsAsync = ref.watch(roadmapsProvider);
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const Text(
+            'Roadmaps',
+            style: TextStyle(
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              color: Colors.white,
+            ),
+          ),
+          const SizedBox(height: 12),
+          roadmapsAsync.when(
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (err, _) => Center(
+              child: Text('Error: $err', style: const TextStyle(color: Colors.grey)),
+            ),
+            data: (roadmapsList) {
+              if (roadmapsList.isEmpty) {
+                return Container(
+                  width: double.infinity,
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF171717),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(color: const Color(0xFF262626)),
+                  ),
+                  child: const Text(
+                    'Aun no has definido metas a largo plazo.\nCrea tu primer Roadmap.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.grey, fontSize: 15),
+                  ),
+                );
+              }
+
+              return ListView.builder(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: roadmapsList.length,
+                itemBuilder: (context, index) {
+                  final roadmapItem = roadmapsList[index];
+                  final roadmap = roadmapItem.roadmap;
+                  final progress = roadmapItem.progress;
+
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF171717),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: const Color(0xFF2A2A2A)),
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => RoadmapDetailScreen(roadmapId: roadmap.id),
+                            ),
+                          );
+                        },
+                        onLongPress: () {
+                          HapticFeedback.heavyImpact();
+                          _showOptionsBottomSheet(
+                            context: context,
+                            ref: ref,
+                            type: 'roadmap',
+                            item: roadmapItem,
+                          );
+                        },
+                        child: Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Expanded(
+                                    child: Text(
+                                      roadmap.title,
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ),
+                                  Column(
+                                    crossAxisAlignment: CrossAxisAlignment.end,
+                                    children: [
+                                      Text(
+                                        '${(progress * 100).toStringAsFixed(0)}%',
+                                        style: TextStyle(
+                                          color: Theme.of(context).colorScheme.primary,
+                                          fontWeight: FontWeight.bold,
+                                        ),
+                                      ),
+                                      const SizedBox(height: 3),
+                                      Text(
+                                        roadmapItem.showOnHome ? 'En Hoy' : 'Oculto',
+                                        style: TextStyle(
+                                          color: roadmapItem.showOnHome ? const Color(0xFF8FD8FF) : Colors.white38,
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              LinearProgressIndicator(
+                                value: progress,
+                                backgroundColor: const Color(0xFF2A2A2A),
+                                color: Theme.of(context).colorScheme.primary,
+                                borderRadius: BorderRadius.circular(4),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                },
+              );
+            },
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NextRoadmapAction {
+  const _NextRoadmapAction({
+    required this.roadmap,
+    required this.milestone,
+    required this.task,
+  });
+
+  final Roadmap roadmap;
+  final RoadmapMilestone milestone;
+  final MilestoneTask task;
+}
+
+class _NextRoadmapActions extends ConsumerWidget {
+  const _NextRoadmapActions();
+
+  List<_NextRoadmapAction> _buildActions(List<RoadmapWithDetails> roadmaps) {
+    final actions = <_NextRoadmapAction>[];
+
+    for (final roadmap in roadmaps) {
+      if (!roadmap.showOnHome) continue;
+
+      for (final milestone in roadmap.milestones) {
+        final pendingTasks = milestone.tasks.where((task) => !task.isCompleted);
+        if (pendingTasks.isNotEmpty) {
+          actions.add(
+            _NextRoadmapAction(
+              roadmap: roadmap.roadmap,
+              milestone: milestone.milestone,
+              task: pendingTasks.first,
+            ),
+          );
+          break;
+        }
+      }
+    }
+
+    return actions;
+  }
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final roadmapsAsync = ref.watch(roadmapsProvider);
+
+    return roadmapsAsync.when(
+      loading: () => const SizedBox.shrink(),
+      error: (_, __) => const SizedBox.shrink(),
+      data: (roadmaps) {
+        final actions = _buildActions(roadmaps);
+        if (actions.isEmpty) return const SizedBox.shrink();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Siguiente de roadmaps',
+              style: TextStyle(
+                color: Color(0xFF8FD8FF),
+                fontSize: 13,
+                fontWeight: FontWeight.w700,
+                letterSpacing: 0.2,
+              ),
+            ),
+            const SizedBox(height: 8),
+            ...actions.map((action) => _NextRoadmapActionCard(action: action)),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _NextRoadmapActionCard extends ConsumerWidget {
+  const _NextRoadmapActionCard({required this.action});
+
+  final _NextRoadmapAction action;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    const accent = Color(0xFF8FD8FF);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      decoration: BoxDecoration(
+        color: const Color(0xFF101A20),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: accent.withOpacity(0.45), width: 1.2),
+      ),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(14),
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => RoadmapDetailScreen(roadmapId: action.roadmap.id),
+              ),
+            );
+          },
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+            child: Row(
+              children: [
+                Checkbox(
+                  value: false,
+                  activeColor: accent,
+                  checkColor: Colors.black,
+                  side: const BorderSide(color: Color(0xFF5C7F90)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                  onChanged: (value) {
+                    if (value == true) {
+                      ref.read(roadmapsProvider.notifier).toggleTaskStatus(action.task.id, true);
+                    }
+                  },
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        action.task.title,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        '${action.roadmap.title} - ${action.milestone.title}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: Color(0xFF9BB8C6),
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(Icons.chevron_right_rounded, color: accent),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _ExpandableTaskCard extends ConsumerStatefulWidget {
   final dynamic
   task; // Usamos dynamic por si la clase Task viene de Drift directo

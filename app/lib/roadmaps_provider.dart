@@ -23,8 +23,10 @@ class MilestoneWithTasks {
 class RoadmapWithDetails {
   final Roadmap roadmap;
   final List<MilestoneWithTasks> milestones;
+  final bool showOnHome;
+  final String? lifeAreaId;
 
-  RoadmapWithDetails(this.roadmap, this.milestones);
+  RoadmapWithDetails(this.roadmap, this.milestones, {required this.showOnHome, this.lifeAreaId});
 
   double get progress {
     int totalTasks = 0;
@@ -55,7 +57,24 @@ class RoadmapsNotifier extends _$RoadmapsNotifier {
   Stream<RoadmapsList> build() {
     final db = ref.watch(appDatabaseProvider);
 
-    final roadmapsStream = db.select(db.roadmaps).watch();
+    final roadmapsStream = db.customSelect(
+      'SELECT id, title, description, show_on_home, life_area_id, created_at, is_synced FROM roadmaps',
+      readsFrom: {db.roadmaps},
+    ).watch().map((rows) {
+      return rows.map((row) {
+        return (
+          roadmap: Roadmap(
+            id: row.read<String>('id'),
+            title: row.read<String>('title'),
+            description: row.readNullable<String>('description'),
+            createdAt: row.read<DateTime>('created_at'),
+            isSynced: row.read<bool>('is_synced'),
+          ),
+          showOnHome: row.read<bool>('show_on_home'),
+          lifeAreaId: row.readNullable<String>('life_area_id'),
+        );
+      }).toList();
+    });
     final milestonesStream = db.select(db.roadmapMilestones).watch();
     final tasksStream = db.select(db.milestoneTasks).watch();
 
@@ -63,9 +82,10 @@ class RoadmapsNotifier extends _$RoadmapsNotifier {
       roadmapsStream,
       milestonesStream,
       tasksStream,
-      (List<Roadmap> roadmaps, List<RoadmapMilestone> milestones, List<MilestoneTask> tasks) {
+      (List<({Roadmap roadmap, bool showOnHome, String? lifeAreaId})> roadmaps, List<RoadmapMilestone> milestones, List<MilestoneTask> tasks) {
         
-        return roadmaps.map((roadmap) {
+        return roadmaps.map((item) {
+          final roadmap = item.roadmap;
           // Filtrar milestones de este roadmap
           final roadmapMilestones = milestones.where((m) => m.roadmapId == roadmap.id).toList()
             ..sort((a, b) => a.createdAt.compareTo(b.createdAt));
@@ -77,18 +97,18 @@ class RoadmapsNotifier extends _$RoadmapsNotifier {
             return MilestoneWithTasks(milestone, milestoneTasks);
           }).toList();
 
-          return RoadmapWithDetails(roadmap, milestonesWithTasks);
+          return RoadmapWithDetails(roadmap, milestonesWithTasks, showOnHome: item.showOnHome, lifeAreaId: item.lifeAreaId);
         }).toList()..sort((a, b) => a.roadmap.createdAt.compareTo(b.roadmap.createdAt));
       },
     );
   }
 
-  void createRoadmap(String title, String? description) {
-    ref.read(roadmapsRepositoryProvider).createRoadmap(title: title, description: description);
+  void createRoadmap(String title, String? description, {bool showOnHome = true, String? lifeAreaId}) {
+    ref.read(roadmapsRepositoryProvider).createRoadmap(title: title, description: description, showOnHome: showOnHome, lifeAreaId: lifeAreaId);
   }
 
-  void updateRoadmap(String id, String title, String? description) {
-    ref.read(roadmapsRepositoryProvider).updateRoadmap(id, title: title, description: description);
+  void updateRoadmap(String id, String title, String? description, {bool showOnHome = true, String? lifeAreaId}) {
+    ref.read(roadmapsRepositoryProvider).updateRoadmap(id, title: title, description: description, showOnHome: showOnHome, lifeAreaId: lifeAreaId);
   }
 
   void deleteRoadmap(String id) {

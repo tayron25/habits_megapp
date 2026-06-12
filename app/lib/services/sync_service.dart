@@ -1,3 +1,5 @@
+﻿import 'dart:convert';
+
 import 'package:app/local_database.dart';
 import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -14,7 +16,7 @@ class SyncService {
 
   Future<void> syncDown() async {
     try {
-      print('🔄 Iniciando Sync Pull (Supabase -> Local)...');
+      print('ðŸ”„ Iniciando Sync Pull (Supabase -> Local)...');
 
       // NIVEL 1: Sin dependencias (o independientes de entidades principales)
       await _syncLifeAreas();
@@ -33,14 +35,15 @@ class SyncService {
         _syncRoadmapMilestones(),
       ]);
 
-      // NIVEL 4: Dependen de entidades de Nivel 3 (y WorkoutLogs)
+      // NIVEL 4: Dependen de entidades de Nivel 3
       await Future.wait([
         _syncMilestoneTasks(),
+        _syncActivityEvents(),
       ]);
 
-      print('✅ Sync Pull completado exitosamente.');
+      print('âœ… Sync Pull completado exitosamente.');
     } catch (e) {
-      print('⚠️ Error general en Sync Pull: $e');
+      print('âš ï¸ Error general en Sync Pull: $e');
     }
   }
 
@@ -58,9 +61,9 @@ class SyncService {
       await _database.batch((batch) {
         batch.insertAll(_database.lifeAreas, companions, mode: InsertMode.insertOrReplace);
       });
-      print('✅ Sync OK: life_areas');
+      print('âœ… Sync OK: life_areas');
     } catch (e) {
-      print('❌ Error en Sync Pull de life_areas: $e');
+      print('âŒ Error en Sync Pull de life_areas: $e');
     }
   }
 
@@ -77,9 +80,29 @@ class SyncService {
       await _database.batch((batch) {
         batch.insertAll(_database.notes, companions, mode: InsertMode.insertOrReplace);
       });
-      print('✅ Sync OK: notes');
+      for (final row in data) {
+        final lifeAreaId = row['life_area_id'] as String?;
+        final processedAt = row['processed_at'] != null ? DateTime.parse(row['processed_at'] as String) : null;
+        final lifeAreaSql = lifeAreaId == null ? 'NULL' : '?';
+        final processedAtSql = processedAt == null ? 'NULL' : '?';
+
+        await _database.customUpdate(
+          'UPDATE notes SET life_area_id = $lifeAreaSql, status = ?, processed_at = $processedAtSql, converted_to_type = ?, converted_to_id = ?, note_type = ? WHERE id = ?',
+          variables: [
+            if (lifeAreaId != null) Variable.withString(lifeAreaId),
+            Variable.withString(row['status'] as String? ?? 'captured'),
+            if (processedAt != null) Variable<DateTime>(processedAt),
+            Variable<String>(row['converted_to_type'] as String?),
+            Variable<String>(row['converted_to_id'] as String?),
+            Variable<String>(row['note_type'] as String?),
+            Variable.withString(row['id'] as String),
+          ],
+          updates: {_database.notes},
+        );
+      }
+      print('âœ… Sync OK: notes');
     } catch (e) {
-      print('❌ Error en Sync Pull de notes: $e');
+      print('âŒ Error en Sync Pull de notes: $e');
     }
   }
 
@@ -101,9 +124,28 @@ class SyncService {
       await _database.batch((batch) {
         batch.insertAll(_database.tasks, companions, mode: InsertMode.insertOrReplace);
       });
-      print('✅ Sync OK: tasks');
+      for (final row in data) {
+        final processedAt = row['processed_at'] != null ? DateTime.parse(row['processed_at'] as String) : null;
+        final processedAtSql = processedAt == null ? 'NULL' : '?';
+
+        await _database.customUpdate(
+          'UPDATE tasks SET status = ?, processed_at = $processedAtSql, planned_date = ?, completed_at = ?, missed_at = ?, origin_type = ?, origin_id = ? WHERE id = ?',
+          variables: [
+            Variable.withString(row['status'] as String? ?? 'active'),
+            if (processedAt != null) Variable<DateTime>(processedAt),
+            Variable<DateTime>(row['planned_date'] != null ? _parseSupabaseDate(row['planned_date'] as String) : null),
+            Variable<DateTime>(row['completed_at'] != null ? DateTime.parse(row['completed_at'] as String) : null),
+            Variable<DateTime>(row['missed_at'] != null ? DateTime.parse(row['missed_at'] as String) : null),
+            Variable<String>(row['origin_type'] as String?),
+            Variable<String>(row['origin_id'] as String?),
+            Variable.withString(row['id'] as String),
+          ],
+          updates: {_database.tasks},
+        );
+      }
+      print('âœ… Sync OK: tasks');
     } catch (e) {
-      print('❌ Error en Sync Pull de tasks: $e');
+      print('âŒ Error en Sync Pull de tasks: $e');
     }
   }
 
@@ -128,9 +170,9 @@ class SyncService {
       await _database.batch((batch) {
         batch.insertAll(_database.habits, companions, mode: InsertMode.insertOrReplace);
       });
-      print('✅ Sync OK: habits');
+      print('âœ… Sync OK: habits');
     } catch (e) {
-      print('❌ Error en Sync Pull de habits: $e');
+      print('âŒ Error en Sync Pull de habits: $e');
     }
   }
 
@@ -147,9 +189,23 @@ class SyncService {
       await _database.batch((batch) {
         batch.insertAll(_database.habitLogs, companions, mode: InsertMode.insertOrReplace);
       });
-      print('✅ Sync OK: habit_logs');
+      for (final row in data) {
+        await _database.customUpdate(
+          'UPDATE habit_logs SET target_date = ?, status = ?, logged_at = ?, amount = ?, source = ? WHERE id = ?',
+          variables: [
+            Variable<DateTime>(row['target_date'] != null ? _parseSupabaseDate(row['target_date'] as String) : null),
+            Variable.withString(row['status'] as String? ?? 'done'),
+            Variable<DateTime>(row['logged_at'] != null ? DateTime.parse(row['logged_at'] as String) : null),
+            Variable<int>(row['amount'] as int?),
+            Variable.withString(row['source'] as String? ?? 'manual'),
+            Variable.withString(row['id'] as String),
+          ],
+          updates: {_database.habitLogs},
+        );
+      }
+      print('Sync OK: habit_logs');
     } catch (e) {
-      print('❌ Error en Sync Pull de habit_logs: $e');
+      print('Error en Sync Pull de habit_logs: $e');
     }
   }
 
@@ -167,9 +223,20 @@ class SyncService {
       await _database.batch((batch) {
         batch.insertAll(_database.roadmaps, companions, mode: InsertMode.insertOrReplace);
       });
-      print('✅ Sync OK: roadmaps');
+      for (final row in data) {
+        await _database.customUpdate(
+          'UPDATE roadmaps SET show_on_home = ?, life_area_id = ? WHERE id = ?',
+          variables: [
+            Variable<bool>(row['show_on_home'] as bool? ?? true),
+            Variable<String>(row['life_area_id'] as String?),
+            Variable.withString(row['id'] as String),
+          ],
+          updates: {_database.roadmaps},
+        );
+      }
+      print('âœ… Sync OK: roadmaps');
     } catch (e) {
-      print('❌ Error en Sync Pull de roadmaps: $e');
+      print('âŒ Error en Sync Pull de roadmaps: $e');
     }
   }
 
@@ -187,9 +254,9 @@ class SyncService {
       await _database.batch((batch) {
         batch.insertAll(_database.roadmapMilestones, companions, mode: InsertMode.insertOrReplace);
       });
-      print('✅ Sync OK: roadmap_milestones');
+      print('âœ… Sync OK: roadmap_milestones');
     } catch (e) {
-      print('❌ Error en Sync Pull de roadmap_milestones: $e');
+      print('âŒ Error en Sync Pull de roadmap_milestones: $e');
     }
   }
 
@@ -208,15 +275,63 @@ class SyncService {
       await _database.batch((batch) {
         batch.insertAll(_database.milestoneTasks, companions, mode: InsertMode.insertOrReplace);
       });
-      print('✅ Sync OK: milestone_tasks');
+      for (final row in data) {
+        await _database.customUpdate(
+          'UPDATE milestone_tasks SET status = ?, completed_at = ? WHERE id = ?',
+          variables: [
+            Variable.withString(row['status'] as String? ?? ((row['is_completed'] as bool? ?? false) ? 'done' : 'active')),
+            Variable<DateTime>(row['completed_at'] != null ? DateTime.parse(row['completed_at'] as String) : null),
+            Variable.withString(row['id'] as String),
+          ],
+          updates: {_database.milestoneTasks},
+        );
+      }
+      print('Sync OK: milestone_tasks');
     } catch (e) {
-      print('❌ Error en Sync Pull de milestone_tasks: $e');
+      print('Error en Sync Pull de milestone_tasks: $e');
+    }
+  }
+
+  Future<void> _syncActivityEvents() async {
+    try {
+      final data = await _supabaseClient.from('activity_events').select();
+      for (final row in data) {
+        await _database.customInsert(
+          '''
+          INSERT OR REPLACE INTO activity_events (
+            id, event_type, entity_type, entity_id, life_area_id,
+            occurred_at, local_date, source_app, metadata_json, is_synced
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          ''',
+          variables: [
+            Variable.withString(row['id'] as String),
+            Variable.withString(row['event_type'] as String),
+            Variable.withString(row['entity_type'] as String),
+            Variable.withString(row['entity_id'] as String),
+            Variable<String>(row['life_area_id'] as String?),
+            Variable<DateTime>(DateTime.parse(row['occurred_at'] as String)),
+            Variable<DateTime>(_parseSupabaseDate(row['local_date'] as String)),
+            Variable.withString(row['source_app'] as String? ?? 'life_os'),
+            Variable<String>(_encodeMetadata(row['metadata_json'])),
+            const Variable<bool>(true),
+          ],
+        );
+      }
+      print('Sync OK: activity_events');
+    } catch (e) {
+      print('Error en Sync Pull de activity_events: $e');
     }
   }
 
 
+  String? _encodeMetadata(Object? metadata) {
+    if (metadata == null) return null;
+    if (metadata is String) return metadata;
+    return jsonEncode(metadata);
+  }
+
   /// Repara fechas que fueron guardadas ingenuamente sin zona horaria
-  /// Si detecta que es UTC puro a las 00:00:00, lo asume como un local date erróneo.
+  /// Si detecta que es UTC puro a las 00:00:00, lo asume como un local date errÃ³neo.
   DateTime _parseSupabaseDate(String dateStr) {
     final parsed = DateTime.parse(dateStr);
     if (parsed.isUtc && parsed.hour == 0 && parsed.minute == 0 && parsed.second == 0) {
@@ -225,3 +340,6 @@ class SyncService {
     return parsed;
   }
 }
+
+
+

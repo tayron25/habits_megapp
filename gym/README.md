@@ -1,33 +1,95 @@
 # Gym Tracker
 
-Aplicación independiente para el registro avanzado de entrenamientos de fuerza, extraída del ecosistema Life OS.
-Comparte el backend remoto (Supabase) con la aplicación principal, permitiendo futuras integraciones y cruce de datos para analíticas.
+Aplicacion independiente para registro avanzado de entrenamientos de fuerza dentro del ecosistema Life OS. Comparte Supabase con la app principal para autenticacion, sincronizacion y futuras analiticas cruzadas, pero mantiene su propia UI y base local.
 
-## 🏋️ Funcionalidades Principales
+## Proposito
 
-- **Gestión de Plantillas (Rutinas):** Crea y edita plantillas de entrenamiento organizadas por grupos musculares.
-- **Registro en Vivo:** Registra pesos y repeticiones durante tus sesiones de entrenamiento en tiempo real.
-- **Sincronización Bidireccional:** Arquitectura Offline-First con Drift y sincronización automática hacia Supabase (`syncDown` al inicio, y Push en segundo plano).
-- **Ejercicios y Superseries:** Soporte nativo para ejercicios agrupados en superseries.
+Gym Tracker esta disenada con una filosofia de cero friccion: abrir la app debe llevar al entrenamiento programado para hoy, con la menor navegacion posible y sugerencias basadas en historial.
 
-## 🛠️ Tecnologías
+## Funcionalidades
 
-- **Framework:** Flutter / Dart
-- **Base de Datos Local:** Drift (SQLite)
-- **Gestión de Estado:** Riverpod (Generación de código)
-- **Backend:** Supabase (Auth & Database)
+- Entrenamiento del dia como flujo principal.
+- Vista de entrenamiento con chrome ocultable al hacer scroll para reducir friccion.
+- Plantillas de entrenamiento.
+- Ejercicios por plantilla.
+- Creacion y edicion de rutinas desde el planner del calendario.
+- Reorden visual de ejercicios durante una sesion, sin modificar la plantilla original.
+- Registro de sesiones y series.
+- Notas por serie.
+- Maximo historico por ejercicio:
+  - Si hay peso, prioriza mayor carga.
+  - Si no hay peso, prioriza mayor cantidad de repeticiones.
+  - En empates, usa reps y fecha reciente como desempate.
+- Progresion por rangos:
+  - Bajo: fuerza, 8 a 12 reps.
+  - Alto: hipertrofia, 12 a 16 reps.
+  - Manual: sin progresion automatica.
+- Calendario semanal compacto con chips de rutinas.
+- Panel unico de planificacion para elegir, crear, cambiar, mover y borrar rutinas.
+- Seleccion multiple de dias para borrar planificaciones.
+- Generador de patrones.
+- Auto-shift para desplazar entrenamientos pendientes si se falta un dia:
+  - Pendientes vencidos se mueven hacia la derecha hasta hoy.
+  - Al adelantar una rutina, los entrenamientos pendientes posteriores se mueven hacia la izquierda.
+  - Al retrasar una rutina, los entrenamientos pendientes posteriores se mueven hacia la derecha.
+- Sincronizacion bidireccional con Supabase.
 
-## 📦 Arquitectura de Base de Datos (Local)
+## UX Principal
 
-El proyecto contiene un esquema especializado de base de datos solo para entidades de gimnasio:
-- `WorkoutTemplates`: Plantillas de entrenamiento.
-- `TemplateExercises`: Ejercicios vinculados a las plantillas.
-- `WorkoutLogs`: Sesiones de entrenamiento históricas o en progreso.
-- `WorkoutSets`: Series individuales (peso y repeticiones).
+La app prioriza continuidad y cero friccion:
 
-## 🚀 Cómo Ejecutar
+- Al abrir, la experiencia principal es entrenar hoy o ver la semana actual.
+- El calendario no funciona como agenda pesada; funciona como una cadena flexible de entrenamientos.
+- Si se incumple un dia, el plan se conserva y se desplaza.
+- Si se adelanta un entrenamiento, la cadena pendiente se compacta hacia adelante.
+- Los entrenamientos completados no se arrastran para proteger el historial real.
 
-1. Asegúrate de tener Flutter instalado y un dispositivo/emulador activo.
-2. Descarga las dependencias: `flutter pub get`
-3. Ejecuta el generador de código si modificas la base de datos o providers: `dart run build_runner build -d`
-4. Ejecuta la aplicación: `flutter run`
+## Stack
+
+- Flutter / Dart.
+- Riverpod con generacion de codigo.
+- Drift sobre SQLite como base local.
+- Supabase Auth y PostgreSQL como backend remoto.
+- Arquitectura offline-first.
+
+## Base de Datos Local
+
+El esquema local esta especializado en gimnasio:
+
+- `WorkoutTemplates`: plantillas.
+- `TemplateExercises`: ejercicios de plantillas y reglas de progresion.
+- `WorkoutLogs`: sesiones historicas o en progreso.
+- `WorkoutSets`: series individuales.
+- `PlannedWorkouts`: entrenamientos planificados.
+- `PlannedExercises`: ejercicios planificados.
+- `PendingSyncActions`: acciones offline pendientes.
+
+## Supabase
+
+Gym Tracker usa el mismo backend que Life OS. Las tablas remotas deben usar `authenticated`, RLS habilitado y `user_id` para aislar datos por cuenta.
+
+Ver [Supabase y seguridad](../docs/SUPABASE.md).
+
+## Como Ejecutar
+
+```bash
+flutter pub get
+dart run build_runner build -d
+flutter run
+```
+
+Ejecuta `dart run build_runner build -d` cuando cambies tablas Drift o providers con generacion.
+
+## Documentacion Relacionada
+
+- [Arquitectura general](../docs/ARCHITECTURE.md)
+- [Sincronizacion](../docs/SYNC.md)
+- [Decisiones tecnicas](../docs/DECISIONS.md)
+- [Roadmap](../docs/ROADMAP.md)
+
+## Reglas de Desarrollo
+
+- Actualizar este README o `docs/` cuando cambie una feature, estructura o decision importante.
+- Usar imports absolutos: `package:gym/...`.
+- No depender directamente de codigo de `../app`; la integracion entre apps pasa por Supabase y analiticas.
+- Los scripts SQL deben usar RLS por usuario, nunca permisos amplios a `anon`.

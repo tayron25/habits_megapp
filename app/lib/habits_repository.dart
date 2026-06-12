@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:app/local_database.dart';
 import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -65,6 +67,19 @@ class HabitsRepository {
     } catch (_) {
       // Network errors are ignored so the local habit remains available offline.
     }
+
+    await _recordActivityEvent(
+      eventType: 'habit_created',
+      entityType: 'habit',
+      entityId: id,
+      lifeAreaId: lifeAreaId,
+      occurredAt: DateTime.now(),
+      metadata: {
+        'repeat_mode': repeatMode,
+        'goal_amount': goalAmount,
+        'goal_period': goalPeriod,
+      },
+    );
   }
 
   Future<void> updateHabit(
@@ -124,6 +139,7 @@ class HabitsRepository {
 
     if (isCompleted) {
       final logId = _uuid.v4();
+      final loggedAt = DateTime.now();
 
       await _database.into(_database.habitLogs).insert(
             HabitLogsCompanion.insert(
@@ -134,11 +150,30 @@ class HabitsRepository {
             ),
           );
 
+      await _database.customUpdate(
+        'UPDATE habit_logs SET target_date = ?, status = ?, logged_at = ?, amount = ?, source = ? WHERE id = ?',
+        variables: [
+          Variable<DateTime>(completedDate),
+          Variable.withString('done'),
+          Variable<DateTime>(loggedAt),
+          const Variable<int>(1),
+          Variable.withString('manual'),
+          Variable.withString(logId),
+        ],
+        updates: {_database.habitLogs},
+      );
+
+      final habit = await (_database.select(_database.habits)..where((h) => h.id.equals(habitId))).getSingleOrNull();
       try {
         await _supabaseClient.from('habit_logs').insert({
           'id': logId,
           'habit_id': habitId,
           'completed_date': completedDate.toUtc().toIso8601String(),
+          'target_date': completedDate.toUtc().toIso8601String(),
+          'status': 'done',
+          'logged_at': loggedAt.toUtc().toIso8601String(),
+          'amount': 1,
+          'source': 'manual',
           'is_synced': false,
           'user_id': _supabaseClient.auth.currentUser?.id,
         });
@@ -151,6 +186,14 @@ class HabitsRepository {
       } catch (_) {
         // Network errors are ignored so the local completion remains available offline.
       }
+      await _recordActivityEvent(
+        eventType: 'habit_completed',
+        entityType: 'habit',
+        entityId: habitId,
+        lifeAreaId: habit?.lifeAreaId,
+        occurredAt: loggedAt,
+        metadata: {'target_date': completedDate.toIso8601String(), 'amount': 1},
+      );
       return;
     }
 
@@ -162,6 +205,16 @@ class HabitsRepository {
         .getSingleOrNull();
 
     if (logToDelete != null) {
+      final habit = await (_database.select(_database.habits)..where((h) => h.id.equals(habitId))).getSingleOrNull();
+      await _recordActivityEvent(
+        eventType: 'habit_uncompleted',
+        entityType: 'habit',
+        entityId: habitId,
+        lifeAreaId: habit?.lifeAreaId,
+        occurredAt: DateTime.now(),
+        metadata: {'target_date': completedDate.toIso8601String()},
+      );
+
       // 2. Registrar el borrado pendiente
       await _database.into(_database.pendingSyncActions).insert(
             PendingSyncActionsCompanion.insert(
@@ -204,6 +257,36 @@ class HabitsRepository {
 
   DateTime _normalizeDate(DateTime date) {
     return DateTime(date.year, date.month, date.day);
+  }
+
+  Future<void> _recordActivityEvent({
+    required String eventType,
+    required String entityType,
+    required String entityId,
+    String? lifeAreaId,
+    required DateTime occurredAt,
+    Map<String, Object?>? metadata,
+  }) async {
+    await _database.customInsert(
+      '''
+      INSERT OR REPLACE INTO activity_events (
+        id, event_type, entity_type, entity_id, life_area_id,
+        occurred_at, local_date, source_app, metadata_json, is_synced
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ''',
+      variables: [
+        Variable.withString(_uuid.v4()),
+        Variable.withString(eventType),
+        Variable.withString(entityType),
+        Variable.withString(entityId),
+        Variable<String>(lifeAreaId),
+        Variable<DateTime>(occurredAt),
+        Variable<DateTime>(DateTime(occurredAt.year, occurredAt.month, occurredAt.day)),
+        Variable.withString('life_os'),
+        Variable<String>(metadata == null ? null : jsonEncode(metadata)),
+        const Variable<bool>(false),
+      ],
+    );
   }
 
   Future<void> deleteHabit(String id) async {

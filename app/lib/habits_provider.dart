@@ -2,10 +2,8 @@ import 'dart:async';
 
 import 'package:app/habits_repository.dart';
 import 'package:app/local_database.dart';
-import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
-import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:app/notes_provider.dart'; // O la ruta correcta a tu archivo
 
 part 'habits_provider.g.dart';

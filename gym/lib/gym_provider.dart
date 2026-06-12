@@ -33,8 +33,16 @@ class GymTemplatesNotifier extends _$GymTemplatesNotifier {
   }
 
   // Método público para la UI
-  void createTemplate(String name, List<Map<String, String>> exercises) {
+  void createTemplate(String name, List<Map<String, dynamic>> exercises) {
     ref.read(gymRepositoryProvider).saveWorkoutTemplate(name, exercises);
+  }
+
+  void updateTemplate(String templateId, String name, List<Map<String, dynamic>> exercises) {
+    ref.read(gymRepositoryProvider).updateWorkoutTemplate(templateId, name, exercises);
+  }
+
+  void deleteTemplate(String templateId) {
+    ref.read(gymRepositoryProvider).deleteWorkoutTemplate(templateId);
   }
 
   // Este método hace un "Join" en memoria para juntar plantillas con sus ejercicios
@@ -81,6 +89,11 @@ final workoutSetsByLogProvider = StreamProvider.family<List<WorkoutSet>, String>
   return (db.select(db.workoutSets)..where((s) => s.workoutLogId.equals(logId))).watch();
 });
 
+final plannedWorkoutsProvider = StreamProvider.family<List<PlannedWorkout>, DateTime>((ref, startOfWeek) {
+  final endOfWeek = startOfWeek.add(const Duration(days: 7, milliseconds: -1));
+  return ref.watch(gymRepositoryProvider).watchPlannedWorkouts(startOfWeek, endOfWeek);
+});
+
 // Pequeña utilidad para combinar streams de Drift
 class StreamQuery {
   static Stream<T> combine2<A, B, T>(
@@ -110,5 +123,17 @@ class StreamQuery {
     };
 
     yield* controller.stream;
+  }
+}
+
+// Provider para la lógica del calendario
+final gymCalendarProvider = Provider((ref) => GymCalendarLogic(ref));
+
+class GymCalendarLogic {
+  final Ref ref;
+  GymCalendarLogic(this.ref);
+
+  Future<void> generatePattern(List<String?> pattern, int weeks) async {
+    await ref.read(gymRepositoryProvider).generateWorkoutPattern(pattern, weeks);
   }
 }

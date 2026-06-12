@@ -1,3 +1,5 @@
+import 'dart:convert';
+
 import 'package:app/local_database.dart';
 import 'package:drift/drift.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
@@ -48,6 +50,13 @@ class TasksRepository {
         'priority': priority,
         'due_date': dueDate?.toIso8601String(),
         'life_area_id': lifeAreaId,
+        'status': 'active',
+        'processed_at': null,
+        'planned_date': dueDate?.toIso8601String(),
+        'completed_at': null,
+        'missed_at': null,
+        'origin_type': 'manual',
+        'origin_id': null,
         'created_at': now.toIso8601String(),
         'is_synced': true,
         'user_id': _supabaseClient.auth.currentUser?.id,
@@ -58,6 +67,24 @@ class TasksRepository {
     } catch (e) {
       print('❌ Error de sync en tarea: $e');
     }
+
+    await _database.customUpdate(
+      'UPDATE tasks SET planned_date = ?, origin_type = ? WHERE id = ?',
+      variables: [
+        Variable<DateTime>(dueDate),
+        Variable.withString('manual'),
+        Variable.withString(id),
+      ],
+      updates: {_database.tasks},
+    );
+    await _recordActivityEvent(
+      eventType: 'task_created',
+      entityType: 'task',
+      entityId: id,
+      lifeAreaId: lifeAreaId,
+      occurredAt: now,
+      metadata: {'priority': priority, 'has_due_date': dueDate != null},
+    );
   }
 
   // --- Actualizar Tarea ---
@@ -80,6 +107,14 @@ class TasksRepository {
         isSynced: const Value(false),
       ),
     );
+    await _database.customUpdate(
+      "UPDATE tasks SET status = 'active', processed_at = NULL, planned_date = ?, completed_at = NULL, missed_at = NULL WHERE id = ?",
+      variables: [
+        Variable<DateTime>(dueDate),
+        Variable.withString(id),
+      ],
+      updates: {_database.tasks},
+    );
 
     // Remoto
     try {
@@ -89,6 +124,11 @@ class TasksRepository {
         'priority': priority,
         'due_date': dueDate?.toIso8601String(),
         'life_area_id': lifeAreaId,
+        'status': 'active',
+        'processed_at': null,
+        'planned_date': dueDate?.toIso8601String(),
+        'completed_at': null,
+        'missed_at': null,
         'is_synced': true,
       }).eq('id', id);
 
@@ -101,17 +141,44 @@ class TasksRepository {
 
   // --- Alternar Estado (Completada/Pendiente) ---
   Future<void> toggleTaskStatus(String id, bool isCompleted) async {
+    await processTask(id, didComplete: isCompleted);
+  }
+
+  Future<void> processTask(String id, {required bool didComplete}) async {
+    final processedAt = DateTime.now();
+    final status = didComplete ? 'done' : 'missed';
+    final completedAtSql = didComplete ? '?' : 'NULL';
+    final missedAtSql = didComplete ? 'NULL' : '?';
+
     // 1. Local (Marcar como no sincronizado)
     await (_database.update(_database.tasks)..where((t) => t.id.equals(id))).write(
       TasksCompanion(
-        isCompleted: Value(isCompleted),
+        isCompleted: Value(didComplete),
         isSynced: const Value(false),
       ),
+    );
+    await _database.customUpdate(
+      'UPDATE tasks SET status = ?, processed_at = ?, completed_at = $completedAtSql, missed_at = $missedAtSql, is_synced = ? WHERE id = ?',
+      variables: [
+        Variable.withString(status),
+        Variable<DateTime>(processedAt),
+        if (didComplete) Variable<DateTime>(processedAt),
+        if (!didComplete) Variable<DateTime>(processedAt),
+        const Variable<bool>(false),
+        Variable.withString(id),
+      ],
+      updates: {_database.tasks},
     );
 
     // 2. Remoto
     try {
-      await _supabaseClient.from('tasks').update({'is_completed': isCompleted}).eq('id', id);
+      await _supabaseClient.from('tasks').update({
+        'is_completed': didComplete,
+        'status': status,
+        'processed_at': processedAt.toIso8601String(),
+        'completed_at': didComplete ? processedAt.toIso8601String() : null,
+        'missed_at': didComplete ? null : processedAt.toIso8601String(),
+      }).eq('id', id);
 
       // Si tiene éxito, marcar como sincronizado
       await (_database.update(_database.tasks)..where((t) => t.id.equals(id)))
@@ -119,10 +186,28 @@ class TasksRepository {
     } catch (e) {
       print('❌ Error al actualizar estado de tarea: $e. Se sincronizará luego.');
     }
+
+    final task = await (_database.select(_database.tasks)..where((t) => t.id.equals(id))).getSingleOrNull();
+    await _recordActivityEvent(
+      eventType: didComplete ? 'task_done' : 'task_missed',
+      entityType: 'task',
+      entityId: id,
+      lifeAreaId: task?.lifeAreaId,
+      occurredAt: processedAt,
+    );
   }
 
   // --- Eliminar Tarea ---
   Future<void> deleteTask(String id) async {
+    final task = await (_database.select(_database.tasks)..where((t) => t.id.equals(id))).getSingleOrNull();
+    await _recordActivityEvent(
+      eventType: 'task_deleted_error',
+      entityType: 'task',
+      entityId: id,
+      lifeAreaId: task?.lifeAreaId,
+      occurredAt: DateTime.now(),
+    );
+
     // 1. Registrar borrado pendiente
     await _database.into(_database.pendingSyncActions).insert(
           PendingSyncActionsCompanion.insert(
@@ -144,5 +229,35 @@ class TasksRepository {
     } catch (e) {
       print('❌ Error al eliminar tarea: $e. Pendiente de sync.');
     }
+  }
+
+  Future<void> _recordActivityEvent({
+    required String eventType,
+    required String entityType,
+    required String entityId,
+    String? lifeAreaId,
+    required DateTime occurredAt,
+    Map<String, Object?>? metadata,
+  }) async {
+    await _database.customInsert(
+      '''
+      INSERT OR REPLACE INTO activity_events (
+        id, event_type, entity_type, entity_id, life_area_id,
+        occurred_at, local_date, source_app, metadata_json, is_synced
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ''',
+      variables: [
+        Variable.withString(_uuid.v4()),
+        Variable.withString(eventType),
+        Variable.withString(entityType),
+        Variable.withString(entityId),
+        Variable<String>(lifeAreaId),
+        Variable<DateTime>(occurredAt),
+        Variable<DateTime>(DateTime(occurredAt.year, occurredAt.month, occurredAt.day)),
+        Variable.withString('life_os'),
+        Variable<String>(metadata == null ? null : jsonEncode(metadata)),
+        const Variable<bool>(false),
+      ],
+    );
   }
 }

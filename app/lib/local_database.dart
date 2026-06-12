@@ -11,6 +11,9 @@ part 'local_database.g.dart';
 class Notes extends Table {
   TextColumn get id => text()();
   TextColumn get content => text()();
+  TextColumn get lifeAreaId => text().nullable()();
+  TextColumn get status => text().withDefault(const Constant('captured'))();
+  DateTimeColumn get processedAt => dateTime().nullable()();
   DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
   BoolColumn get isSynced => boolean().clientDefault(() => false)();
 
@@ -75,6 +78,8 @@ class Tasks extends Table {
   TextColumn get priority => text().withDefault(const Constant('Media'))();
   DateTimeColumn get dueDate => dateTime().nullable()();
   TextColumn get lifeAreaId => text().nullable()();
+  TextColumn get status => text().withDefault(const Constant('active'))();
+  DateTimeColumn get processedAt => dateTime().nullable()();
   BoolColumn get isCompleted => boolean().withDefault(const Constant(false))();
   DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
   BoolColumn get isSynced => boolean().clientDefault(() => false)();
@@ -88,6 +93,7 @@ class Roadmaps extends Table {
   TextColumn get id => text()();
   TextColumn get title => text()();
   TextColumn get description => text().nullable()();
+  BoolColumn get showOnHome => boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime().clientDefault(() => DateTime.now())();
   BoolColumn get isSynced => boolean().clientDefault(() => false)();
 
@@ -142,13 +148,18 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase() : super(_openConnection());
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 15;
 
   @override
   MigrationStrategy get migration {
     return MigrationStrategy(
       onCreate: (Migrator m) async {
         await m.createAll();
+        await _ensureNoteProcessingColumns();
+        await _ensureTaskProcessingColumns();
+        await _ensureRoadmapHomeColumns();
+        await _ensureAnalyticsColumns();
+        await _ensureActivityEventsTable();
       },
       onUpgrade: (Migrator m, int from, int to) async {
         if (from < 2) {
@@ -204,11 +215,87 @@ class AppDatabase extends _$AppDatabase {
           await m.issueCustomQuery('DROP TABLE IF EXISTS workout_logs;');
           await m.issueCustomQuery('DROP TABLE IF EXISTS workout_sets;');
         }
+        if (from < 12) {
+          await _ensureNoteProcessingColumns();
+        }
+        if (from < 13) {
+          await _ensureTaskProcessingColumns();
+        }
+        if (from < 14) {
+          await _ensureRoadmapHomeColumns();
+        }
+        if (from < 15) {
+          await _ensureAnalyticsColumns();
+          await _ensureActivityEventsTable();
+        }
       },
       beforeOpen: (details) async {
         await customStatement('PRAGMA foreign_keys = ON');
       },
     );
+  }
+
+  Future<void> _ensureNoteProcessingColumns() async {
+    await _addColumnIfMissing('notes', 'life_area_id', 'TEXT');
+    await _addColumnIfMissing('notes', 'status', "TEXT NOT NULL DEFAULT 'captured'");
+    await _addColumnIfMissing('notes', 'processed_at', 'INTEGER');
+  }
+
+  Future<void> _ensureTaskProcessingColumns() async {
+    await _addColumnIfMissing('tasks', 'status', "TEXT NOT NULL DEFAULT 'active'");
+    await _addColumnIfMissing('tasks', 'processed_at', 'INTEGER');
+  }
+
+  Future<void> _ensureRoadmapHomeColumns() async {
+    await _addColumnIfMissing('roadmaps', 'show_on_home', 'INTEGER NOT NULL DEFAULT 1');
+  }
+
+  Future<void> _ensureAnalyticsColumns() async {
+    await _addColumnIfMissing('notes', 'converted_to_type', 'TEXT');
+    await _addColumnIfMissing('notes', 'converted_to_id', 'TEXT');
+    await _addColumnIfMissing('notes', 'note_type', 'TEXT');
+
+    await _addColumnIfMissing('tasks', 'planned_date', 'INTEGER');
+    await _addColumnIfMissing('tasks', 'completed_at', 'INTEGER');
+    await _addColumnIfMissing('tasks', 'missed_at', 'INTEGER');
+    await _addColumnIfMissing('tasks', 'origin_type', 'TEXT');
+    await _addColumnIfMissing('tasks', 'origin_id', 'TEXT');
+
+    await _addColumnIfMissing('habit_logs', 'target_date', 'INTEGER');
+    await _addColumnIfMissing('habit_logs', 'status', "TEXT NOT NULL DEFAULT 'done'");
+    await _addColumnIfMissing('habit_logs', 'logged_at', 'INTEGER');
+    await _addColumnIfMissing('habit_logs', 'amount', 'INTEGER');
+    await _addColumnIfMissing('habit_logs', 'source', "TEXT NOT NULL DEFAULT 'manual'");
+
+    await _addColumnIfMissing('roadmaps', 'life_area_id', 'TEXT');
+
+    await _addColumnIfMissing('milestone_tasks', 'status', "TEXT NOT NULL DEFAULT 'active'");
+    await _addColumnIfMissing('milestone_tasks', 'completed_at', 'INTEGER');
+  }
+
+  Future<void> _ensureActivityEventsTable() async {
+    await customStatement('''
+      CREATE TABLE IF NOT EXISTS activity_events (
+        id TEXT PRIMARY KEY NOT NULL,
+        event_type TEXT NOT NULL,
+        entity_type TEXT NOT NULL,
+        entity_id TEXT NOT NULL,
+        life_area_id TEXT NULL,
+        occurred_at INTEGER NOT NULL,
+        local_date INTEGER NOT NULL,
+        source_app TEXT NOT NULL DEFAULT 'life_os',
+        metadata_json TEXT NULL,
+        is_synced INTEGER NOT NULL DEFAULT 0
+      )
+    ''');
+  }
+
+  Future<void> _addColumnIfMissing(String table, String column, String definition) async {
+    final columns = await customSelect('PRAGMA table_info($table)').get();
+    final exists = columns.any((row) => row.read<String>('name') == column);
+    if (!exists) {
+      await customStatement('ALTER TABLE $table ADD COLUMN $column $definition');
+    }
   }
 }
 

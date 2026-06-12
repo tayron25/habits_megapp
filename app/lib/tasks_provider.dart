@@ -1,4 +1,3 @@
-import 'package:drift/drift.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -23,9 +22,29 @@ class TasksNotifier extends _$TasksNotifier {
   @override
   Stream<TasksList> build() {
     final database = ref.watch(appDatabaseProvider);
-    return (database.select(database.tasks)
-          ..orderBy([(t) => OrderingTerm(expression: t.createdAt, mode: OrderingMode.desc)]))
-        .watch();
+    return database
+        .customSelect(
+          "SELECT id, title, description, priority, due_date, life_area_id, is_completed, created_at, is_synced FROM tasks WHERE status = 'active' ORDER BY created_at DESC",
+          readsFrom: {database.tasks},
+        )
+        .watch()
+        .map(
+          (rows) => rows
+              .map(
+                (row) => Task(
+                  id: row.read<String>('id'),
+                  title: row.read<String>('title'),
+                  description: row.readNullable<String>('description'),
+                  priority: row.read<String>('priority'),
+                  dueDate: row.readNullable<DateTime>('due_date'),
+                  lifeAreaId: row.readNullable<String>('life_area_id'),
+                  isCompleted: row.read<bool>('is_completed'),
+                  createdAt: row.read<DateTime>('created_at'),
+                  isSynced: row.read<bool>('is_synced'),
+                ),
+              )
+              .toList(),
+        );
   }
 
   void addTask({
@@ -68,5 +87,9 @@ class TasksNotifier extends _$TasksNotifier {
 
   void removeTask(String id) {
     ref.read(tasksRepositoryProvider).deleteTask(id);
+  }
+
+  void processTask(String id, {required bool didComplete}) {
+    ref.read(tasksRepositoryProvider).processTask(id, didComplete: didComplete);
   }
 }

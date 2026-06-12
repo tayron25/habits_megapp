@@ -369,6 +369,38 @@ class $TemplateExercisesTable extends TemplateExercises
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _progressionRuleMeta = const VerificationMeta(
+    'progressionRule',
+  );
+  @override
+  late final GeneratedColumn<String> progressionRule = GeneratedColumn<String>(
+    'progression_rule',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _progressionTargetRepsMeta =
+      const VerificationMeta('progressionTargetReps');
+  @override
+  late final GeneratedColumn<int> progressionTargetReps = GeneratedColumn<int>(
+    'progression_target_reps',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _progressionTargetWeightIncreaseMeta =
+      const VerificationMeta('progressionTargetWeightIncrease');
+  @override
+  late final GeneratedColumn<double> progressionTargetWeightIncrease =
+      GeneratedColumn<double>(
+        'progression_target_weight_increase',
+        aliasedName,
+        true,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -403,6 +435,9 @@ class $TemplateExercisesTable extends TemplateExercises
     muscleGroup,
     exerciseName,
     supersetId,
+    progressionRule,
+    progressionTargetReps,
+    progressionTargetWeightIncrease,
     createdAt,
     isSynced,
   ];
@@ -459,6 +494,33 @@ class $TemplateExercisesTable extends TemplateExercises
         supersetId.isAcceptableOrUnknown(data['superset_id']!, _supersetIdMeta),
       );
     }
+    if (data.containsKey('progression_rule')) {
+      context.handle(
+        _progressionRuleMeta,
+        progressionRule.isAcceptableOrUnknown(
+          data['progression_rule']!,
+          _progressionRuleMeta,
+        ),
+      );
+    }
+    if (data.containsKey('progression_target_reps')) {
+      context.handle(
+        _progressionTargetRepsMeta,
+        progressionTargetReps.isAcceptableOrUnknown(
+          data['progression_target_reps']!,
+          _progressionTargetRepsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('progression_target_weight_increase')) {
+      context.handle(
+        _progressionTargetWeightIncreaseMeta,
+        progressionTargetWeightIncrease.isAcceptableOrUnknown(
+          data['progression_target_weight_increase']!,
+          _progressionTargetWeightIncreaseMeta,
+        ),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -500,6 +562,18 @@ class $TemplateExercisesTable extends TemplateExercises
         DriftSqlType.string,
         data['${effectivePrefix}superset_id'],
       ),
+      progressionRule: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}progression_rule'],
+      ),
+      progressionTargetReps: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}progression_target_reps'],
+      ),
+      progressionTargetWeightIncrease: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}progression_target_weight_increase'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -524,6 +598,9 @@ class TemplateExercise extends DataClass
   final String muscleGroup;
   final String exerciseName;
   final String? supersetId;
+  final String? progressionRule;
+  final int? progressionTargetReps;
+  final double? progressionTargetWeightIncrease;
   final DateTime createdAt;
   final bool isSynced;
   const TemplateExercise({
@@ -532,6 +609,9 @@ class TemplateExercise extends DataClass
     required this.muscleGroup,
     required this.exerciseName,
     this.supersetId,
+    this.progressionRule,
+    this.progressionTargetReps,
+    this.progressionTargetWeightIncrease,
     required this.createdAt,
     required this.isSynced,
   });
@@ -544,6 +624,17 @@ class TemplateExercise extends DataClass
     map['exercise_name'] = Variable<String>(exerciseName);
     if (!nullToAbsent || supersetId != null) {
       map['superset_id'] = Variable<String>(supersetId);
+    }
+    if (!nullToAbsent || progressionRule != null) {
+      map['progression_rule'] = Variable<String>(progressionRule);
+    }
+    if (!nullToAbsent || progressionTargetReps != null) {
+      map['progression_target_reps'] = Variable<int>(progressionTargetReps);
+    }
+    if (!nullToAbsent || progressionTargetWeightIncrease != null) {
+      map['progression_target_weight_increase'] = Variable<double>(
+        progressionTargetWeightIncrease,
+      );
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['is_synced'] = Variable<bool>(isSynced);
@@ -559,6 +650,16 @@ class TemplateExercise extends DataClass
       supersetId: supersetId == null && nullToAbsent
           ? const Value.absent()
           : Value(supersetId),
+      progressionRule: progressionRule == null && nullToAbsent
+          ? const Value.absent()
+          : Value(progressionRule),
+      progressionTargetReps: progressionTargetReps == null && nullToAbsent
+          ? const Value.absent()
+          : Value(progressionTargetReps),
+      progressionTargetWeightIncrease:
+          progressionTargetWeightIncrease == null && nullToAbsent
+          ? const Value.absent()
+          : Value(progressionTargetWeightIncrease),
       createdAt: Value(createdAt),
       isSynced: Value(isSynced),
     );
@@ -575,6 +676,13 @@ class TemplateExercise extends DataClass
       muscleGroup: serializer.fromJson<String>(json['muscleGroup']),
       exerciseName: serializer.fromJson<String>(json['exerciseName']),
       supersetId: serializer.fromJson<String?>(json['supersetId']),
+      progressionRule: serializer.fromJson<String?>(json['progressionRule']),
+      progressionTargetReps: serializer.fromJson<int?>(
+        json['progressionTargetReps'],
+      ),
+      progressionTargetWeightIncrease: serializer.fromJson<double?>(
+        json['progressionTargetWeightIncrease'],
+      ),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
     );
@@ -588,6 +696,11 @@ class TemplateExercise extends DataClass
       'muscleGroup': serializer.toJson<String>(muscleGroup),
       'exerciseName': serializer.toJson<String>(exerciseName),
       'supersetId': serializer.toJson<String?>(supersetId),
+      'progressionRule': serializer.toJson<String?>(progressionRule),
+      'progressionTargetReps': serializer.toJson<int?>(progressionTargetReps),
+      'progressionTargetWeightIncrease': serializer.toJson<double?>(
+        progressionTargetWeightIncrease,
+      ),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'isSynced': serializer.toJson<bool>(isSynced),
     };
@@ -599,6 +712,9 @@ class TemplateExercise extends DataClass
     String? muscleGroup,
     String? exerciseName,
     Value<String?> supersetId = const Value.absent(),
+    Value<String?> progressionRule = const Value.absent(),
+    Value<int?> progressionTargetReps = const Value.absent(),
+    Value<double?> progressionTargetWeightIncrease = const Value.absent(),
     DateTime? createdAt,
     bool? isSynced,
   }) => TemplateExercise(
@@ -607,6 +723,15 @@ class TemplateExercise extends DataClass
     muscleGroup: muscleGroup ?? this.muscleGroup,
     exerciseName: exerciseName ?? this.exerciseName,
     supersetId: supersetId.present ? supersetId.value : this.supersetId,
+    progressionRule: progressionRule.present
+        ? progressionRule.value
+        : this.progressionRule,
+    progressionTargetReps: progressionTargetReps.present
+        ? progressionTargetReps.value
+        : this.progressionTargetReps,
+    progressionTargetWeightIncrease: progressionTargetWeightIncrease.present
+        ? progressionTargetWeightIncrease.value
+        : this.progressionTargetWeightIncrease,
     createdAt: createdAt ?? this.createdAt,
     isSynced: isSynced ?? this.isSynced,
   );
@@ -625,6 +750,16 @@ class TemplateExercise extends DataClass
       supersetId: data.supersetId.present
           ? data.supersetId.value
           : this.supersetId,
+      progressionRule: data.progressionRule.present
+          ? data.progressionRule.value
+          : this.progressionRule,
+      progressionTargetReps: data.progressionTargetReps.present
+          ? data.progressionTargetReps.value
+          : this.progressionTargetReps,
+      progressionTargetWeightIncrease:
+          data.progressionTargetWeightIncrease.present
+          ? data.progressionTargetWeightIncrease.value
+          : this.progressionTargetWeightIncrease,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
     );
@@ -638,6 +773,11 @@ class TemplateExercise extends DataClass
           ..write('muscleGroup: $muscleGroup, ')
           ..write('exerciseName: $exerciseName, ')
           ..write('supersetId: $supersetId, ')
+          ..write('progressionRule: $progressionRule, ')
+          ..write('progressionTargetReps: $progressionTargetReps, ')
+          ..write(
+            'progressionTargetWeightIncrease: $progressionTargetWeightIncrease, ',
+          )
           ..write('createdAt: $createdAt, ')
           ..write('isSynced: $isSynced')
           ..write(')'))
@@ -651,6 +791,9 @@ class TemplateExercise extends DataClass
     muscleGroup,
     exerciseName,
     supersetId,
+    progressionRule,
+    progressionTargetReps,
+    progressionTargetWeightIncrease,
     createdAt,
     isSynced,
   );
@@ -663,6 +806,10 @@ class TemplateExercise extends DataClass
           other.muscleGroup == this.muscleGroup &&
           other.exerciseName == this.exerciseName &&
           other.supersetId == this.supersetId &&
+          other.progressionRule == this.progressionRule &&
+          other.progressionTargetReps == this.progressionTargetReps &&
+          other.progressionTargetWeightIncrease ==
+              this.progressionTargetWeightIncrease &&
           other.createdAt == this.createdAt &&
           other.isSynced == this.isSynced);
 }
@@ -673,6 +820,9 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
   final Value<String> muscleGroup;
   final Value<String> exerciseName;
   final Value<String?> supersetId;
+  final Value<String?> progressionRule;
+  final Value<int?> progressionTargetReps;
+  final Value<double?> progressionTargetWeightIncrease;
   final Value<DateTime> createdAt;
   final Value<bool> isSynced;
   final Value<int> rowid;
@@ -682,6 +832,9 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
     this.muscleGroup = const Value.absent(),
     this.exerciseName = const Value.absent(),
     this.supersetId = const Value.absent(),
+    this.progressionRule = const Value.absent(),
+    this.progressionTargetReps = const Value.absent(),
+    this.progressionTargetWeightIncrease = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.isSynced = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -692,6 +845,9 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
     required String muscleGroup,
     required String exerciseName,
     this.supersetId = const Value.absent(),
+    this.progressionRule = const Value.absent(),
+    this.progressionTargetReps = const Value.absent(),
+    this.progressionTargetWeightIncrease = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.isSynced = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -705,6 +861,9 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
     Expression<String>? muscleGroup,
     Expression<String>? exerciseName,
     Expression<String>? supersetId,
+    Expression<String>? progressionRule,
+    Expression<int>? progressionTargetReps,
+    Expression<double>? progressionTargetWeightIncrease,
     Expression<DateTime>? createdAt,
     Expression<bool>? isSynced,
     Expression<int>? rowid,
@@ -715,6 +874,11 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
       if (muscleGroup != null) 'muscle_group': muscleGroup,
       if (exerciseName != null) 'exercise_name': exerciseName,
       if (supersetId != null) 'superset_id': supersetId,
+      if (progressionRule != null) 'progression_rule': progressionRule,
+      if (progressionTargetReps != null)
+        'progression_target_reps': progressionTargetReps,
+      if (progressionTargetWeightIncrease != null)
+        'progression_target_weight_increase': progressionTargetWeightIncrease,
       if (createdAt != null) 'created_at': createdAt,
       if (isSynced != null) 'is_synced': isSynced,
       if (rowid != null) 'rowid': rowid,
@@ -727,6 +891,9 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
     Value<String>? muscleGroup,
     Value<String>? exerciseName,
     Value<String?>? supersetId,
+    Value<String?>? progressionRule,
+    Value<int?>? progressionTargetReps,
+    Value<double?>? progressionTargetWeightIncrease,
     Value<DateTime>? createdAt,
     Value<bool>? isSynced,
     Value<int>? rowid,
@@ -737,6 +904,12 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
       muscleGroup: muscleGroup ?? this.muscleGroup,
       exerciseName: exerciseName ?? this.exerciseName,
       supersetId: supersetId ?? this.supersetId,
+      progressionRule: progressionRule ?? this.progressionRule,
+      progressionTargetReps:
+          progressionTargetReps ?? this.progressionTargetReps,
+      progressionTargetWeightIncrease:
+          progressionTargetWeightIncrease ??
+          this.progressionTargetWeightIncrease,
       createdAt: createdAt ?? this.createdAt,
       isSynced: isSynced ?? this.isSynced,
       rowid: rowid ?? this.rowid,
@@ -761,6 +934,19 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
     if (supersetId.present) {
       map['superset_id'] = Variable<String>(supersetId.value);
     }
+    if (progressionRule.present) {
+      map['progression_rule'] = Variable<String>(progressionRule.value);
+    }
+    if (progressionTargetReps.present) {
+      map['progression_target_reps'] = Variable<int>(
+        progressionTargetReps.value,
+      );
+    }
+    if (progressionTargetWeightIncrease.present) {
+      map['progression_target_weight_increase'] = Variable<double>(
+        progressionTargetWeightIncrease.value,
+      );
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -781,6 +967,11 @@ class TemplateExercisesCompanion extends UpdateCompanion<TemplateExercise> {
           ..write('muscleGroup: $muscleGroup, ')
           ..write('exerciseName: $exerciseName, ')
           ..write('supersetId: $supersetId, ')
+          ..write('progressionRule: $progressionRule, ')
+          ..write('progressionTargetReps: $progressionTargetReps, ')
+          ..write(
+            'progressionTargetWeightIncrease: $progressionTargetWeightIncrease, ',
+          )
           ..write('createdAt: $createdAt, ')
           ..write('isSynced: $isSynced, ')
           ..write('rowid: $rowid')
@@ -1154,6 +1345,15 @@ class $WorkoutSetsTable extends WorkoutSets
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _noteMeta = const VerificationMeta('note');
+  @override
+  late final GeneratedColumn<String> note = GeneratedColumn<String>(
+    'note',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _createdAtMeta = const VerificationMeta(
     'createdAt',
   );
@@ -1188,6 +1388,7 @@ class $WorkoutSetsTable extends WorkoutSets
     exerciseName,
     weight,
     reps,
+    note,
     createdAt,
     isSynced,
   ];
@@ -1246,6 +1447,12 @@ class $WorkoutSetsTable extends WorkoutSets
     } else if (isInserting) {
       context.missing(_repsMeta);
     }
+    if (data.containsKey('note')) {
+      context.handle(
+        _noteMeta,
+        note.isAcceptableOrUnknown(data['note']!, _noteMeta),
+      );
+    }
     if (data.containsKey('created_at')) {
       context.handle(
         _createdAtMeta,
@@ -1287,6 +1494,10 @@ class $WorkoutSetsTable extends WorkoutSets
         DriftSqlType.int,
         data['${effectivePrefix}reps'],
       )!,
+      note: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}note'],
+      ),
       createdAt: attachedDatabase.typeMapping.read(
         DriftSqlType.dateTime,
         data['${effectivePrefix}created_at'],
@@ -1310,6 +1521,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
   final String exerciseName;
   final double weight;
   final int reps;
+  final String? note;
   final DateTime createdAt;
   final bool isSynced;
   const WorkoutSet({
@@ -1318,6 +1530,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
     required this.exerciseName,
     required this.weight,
     required this.reps,
+    this.note,
     required this.createdAt,
     required this.isSynced,
   });
@@ -1329,6 +1542,9 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
     map['exercise_name'] = Variable<String>(exerciseName);
     map['weight'] = Variable<double>(weight);
     map['reps'] = Variable<int>(reps);
+    if (!nullToAbsent || note != null) {
+      map['note'] = Variable<String>(note);
+    }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['is_synced'] = Variable<bool>(isSynced);
     return map;
@@ -1341,6 +1557,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
       exerciseName: Value(exerciseName),
       weight: Value(weight),
       reps: Value(reps),
+      note: note == null && nullToAbsent ? const Value.absent() : Value(note),
       createdAt: Value(createdAt),
       isSynced: Value(isSynced),
     );
@@ -1357,6 +1574,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
       exerciseName: serializer.fromJson<String>(json['exerciseName']),
       weight: serializer.fromJson<double>(json['weight']),
       reps: serializer.fromJson<int>(json['reps']),
+      note: serializer.fromJson<String?>(json['note']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       isSynced: serializer.fromJson<bool>(json['isSynced']),
     );
@@ -1370,6 +1588,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
       'exerciseName': serializer.toJson<String>(exerciseName),
       'weight': serializer.toJson<double>(weight),
       'reps': serializer.toJson<int>(reps),
+      'note': serializer.toJson<String?>(note),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'isSynced': serializer.toJson<bool>(isSynced),
     };
@@ -1381,6 +1600,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
     String? exerciseName,
     double? weight,
     int? reps,
+    Value<String?> note = const Value.absent(),
     DateTime? createdAt,
     bool? isSynced,
   }) => WorkoutSet(
@@ -1389,6 +1609,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
     exerciseName: exerciseName ?? this.exerciseName,
     weight: weight ?? this.weight,
     reps: reps ?? this.reps,
+    note: note.present ? note.value : this.note,
     createdAt: createdAt ?? this.createdAt,
     isSynced: isSynced ?? this.isSynced,
   );
@@ -1403,6 +1624,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
           : this.exerciseName,
       weight: data.weight.present ? data.weight.value : this.weight,
       reps: data.reps.present ? data.reps.value : this.reps,
+      note: data.note.present ? data.note.value : this.note,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
     );
@@ -1416,6 +1638,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
           ..write('exerciseName: $exerciseName, ')
           ..write('weight: $weight, ')
           ..write('reps: $reps, ')
+          ..write('note: $note, ')
           ..write('createdAt: $createdAt, ')
           ..write('isSynced: $isSynced')
           ..write(')'))
@@ -1429,6 +1652,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
     exerciseName,
     weight,
     reps,
+    note,
     createdAt,
     isSynced,
   );
@@ -1441,6 +1665,7 @@ class WorkoutSet extends DataClass implements Insertable<WorkoutSet> {
           other.exerciseName == this.exerciseName &&
           other.weight == this.weight &&
           other.reps == this.reps &&
+          other.note == this.note &&
           other.createdAt == this.createdAt &&
           other.isSynced == this.isSynced);
 }
@@ -1451,6 +1676,7 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
   final Value<String> exerciseName;
   final Value<double> weight;
   final Value<int> reps;
+  final Value<String?> note;
   final Value<DateTime> createdAt;
   final Value<bool> isSynced;
   final Value<int> rowid;
@@ -1460,6 +1686,7 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
     this.exerciseName = const Value.absent(),
     this.weight = const Value.absent(),
     this.reps = const Value.absent(),
+    this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.isSynced = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1470,6 +1697,7 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
     required String exerciseName,
     required double weight,
     required int reps,
+    this.note = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.isSynced = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -1484,6 +1712,7 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
     Expression<String>? exerciseName,
     Expression<double>? weight,
     Expression<int>? reps,
+    Expression<String>? note,
     Expression<DateTime>? createdAt,
     Expression<bool>? isSynced,
     Expression<int>? rowid,
@@ -1494,6 +1723,7 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
       if (exerciseName != null) 'exercise_name': exerciseName,
       if (weight != null) 'weight': weight,
       if (reps != null) 'reps': reps,
+      if (note != null) 'note': note,
       if (createdAt != null) 'created_at': createdAt,
       if (isSynced != null) 'is_synced': isSynced,
       if (rowid != null) 'rowid': rowid,
@@ -1506,6 +1736,7 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
     Value<String>? exerciseName,
     Value<double>? weight,
     Value<int>? reps,
+    Value<String?>? note,
     Value<DateTime>? createdAt,
     Value<bool>? isSynced,
     Value<int>? rowid,
@@ -1516,6 +1747,7 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
       exerciseName: exerciseName ?? this.exerciseName,
       weight: weight ?? this.weight,
       reps: reps ?? this.reps,
+      note: note ?? this.note,
       createdAt: createdAt ?? this.createdAt,
       isSynced: isSynced ?? this.isSynced,
       rowid: rowid ?? this.rowid,
@@ -1540,6 +1772,9 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
     if (reps.present) {
       map['reps'] = Variable<int>(reps.value);
     }
+    if (note.present) {
+      map['note'] = Variable<String>(note.value);
+    }
     if (createdAt.present) {
       map['created_at'] = Variable<DateTime>(createdAt.value);
     }
@@ -1560,6 +1795,7 @@ class WorkoutSetsCompanion extends UpdateCompanion<WorkoutSet> {
           ..write('exerciseName: $exerciseName, ')
           ..write('weight: $weight, ')
           ..write('reps: $reps, ')
+          ..write('note: $note, ')
           ..write('createdAt: $createdAt, ')
           ..write('isSynced: $isSynced, ')
           ..write('rowid: $rowid')
@@ -1917,6 +2153,917 @@ class PendingSyncActionsCompanion extends UpdateCompanion<PendingSyncAction> {
   }
 }
 
+class $PlannedWorkoutsTable extends PlannedWorkouts
+    with TableInfo<$PlannedWorkoutsTable, PlannedWorkout> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PlannedWorkoutsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _templateIdMeta = const VerificationMeta(
+    'templateId',
+  );
+  @override
+  late final GeneratedColumn<String> templateId = GeneratedColumn<String>(
+    'template_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _plannedDateMeta = const VerificationMeta(
+    'plannedDate',
+  );
+  @override
+  late final GeneratedColumn<DateTime> plannedDate = GeneratedColumn<DateTime>(
+    'planned_date',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _isCompletedMeta = const VerificationMeta(
+    'isCompleted',
+  );
+  @override
+  late final GeneratedColumn<bool> isCompleted = GeneratedColumn<bool>(
+    'is_completed',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_completed" IN (0, 1))',
+    ),
+    clientDefault: () => false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    clientDefault: () => false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    templateId,
+    plannedDate,
+    isCompleted,
+    createdAt,
+    isSynced,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'planned_workouts';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PlannedWorkout> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('template_id')) {
+      context.handle(
+        _templateIdMeta,
+        templateId.isAcceptableOrUnknown(data['template_id']!, _templateIdMeta),
+      );
+    }
+    if (data.containsKey('planned_date')) {
+      context.handle(
+        _plannedDateMeta,
+        plannedDate.isAcceptableOrUnknown(
+          data['planned_date']!,
+          _plannedDateMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_plannedDateMeta);
+    }
+    if (data.containsKey('is_completed')) {
+      context.handle(
+        _isCompletedMeta,
+        isCompleted.isAcceptableOrUnknown(
+          data['is_completed']!,
+          _isCompletedMeta,
+        ),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PlannedWorkout map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PlannedWorkout(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      templateId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}template_id'],
+      ),
+      plannedDate: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}planned_date'],
+      )!,
+      isCompleted: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_completed'],
+      )!,
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+    );
+  }
+
+  @override
+  $PlannedWorkoutsTable createAlias(String alias) {
+    return $PlannedWorkoutsTable(attachedDatabase, alias);
+  }
+}
+
+class PlannedWorkout extends DataClass implements Insertable<PlannedWorkout> {
+  final String id;
+  final String? templateId;
+  final DateTime plannedDate;
+  final bool isCompleted;
+  final DateTime createdAt;
+  final bool isSynced;
+  const PlannedWorkout({
+    required this.id,
+    this.templateId,
+    required this.plannedDate,
+    required this.isCompleted,
+    required this.createdAt,
+    required this.isSynced,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    if (!nullToAbsent || templateId != null) {
+      map['template_id'] = Variable<String>(templateId);
+    }
+    map['planned_date'] = Variable<DateTime>(plannedDate);
+    map['is_completed'] = Variable<bool>(isCompleted);
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['is_synced'] = Variable<bool>(isSynced);
+    return map;
+  }
+
+  PlannedWorkoutsCompanion toCompanion(bool nullToAbsent) {
+    return PlannedWorkoutsCompanion(
+      id: Value(id),
+      templateId: templateId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(templateId),
+      plannedDate: Value(plannedDate),
+      isCompleted: Value(isCompleted),
+      createdAt: Value(createdAt),
+      isSynced: Value(isSynced),
+    );
+  }
+
+  factory PlannedWorkout.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PlannedWorkout(
+      id: serializer.fromJson<String>(json['id']),
+      templateId: serializer.fromJson<String?>(json['templateId']),
+      plannedDate: serializer.fromJson<DateTime>(json['plannedDate']),
+      isCompleted: serializer.fromJson<bool>(json['isCompleted']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'templateId': serializer.toJson<String?>(templateId),
+      'plannedDate': serializer.toJson<DateTime>(plannedDate),
+      'isCompleted': serializer.toJson<bool>(isCompleted),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'isSynced': serializer.toJson<bool>(isSynced),
+    };
+  }
+
+  PlannedWorkout copyWith({
+    String? id,
+    Value<String?> templateId = const Value.absent(),
+    DateTime? plannedDate,
+    bool? isCompleted,
+    DateTime? createdAt,
+    bool? isSynced,
+  }) => PlannedWorkout(
+    id: id ?? this.id,
+    templateId: templateId.present ? templateId.value : this.templateId,
+    plannedDate: plannedDate ?? this.plannedDate,
+    isCompleted: isCompleted ?? this.isCompleted,
+    createdAt: createdAt ?? this.createdAt,
+    isSynced: isSynced ?? this.isSynced,
+  );
+  PlannedWorkout copyWithCompanion(PlannedWorkoutsCompanion data) {
+    return PlannedWorkout(
+      id: data.id.present ? data.id.value : this.id,
+      templateId: data.templateId.present
+          ? data.templateId.value
+          : this.templateId,
+      plannedDate: data.plannedDate.present
+          ? data.plannedDate.value
+          : this.plannedDate,
+      isCompleted: data.isCompleted.present
+          ? data.isCompleted.value
+          : this.isCompleted,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlannedWorkout(')
+          ..write('id: $id, ')
+          ..write('templateId: $templateId, ')
+          ..write('plannedDate: $plannedDate, ')
+          ..write('isCompleted: $isCompleted, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('isSynced: $isSynced')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    templateId,
+    plannedDate,
+    isCompleted,
+    createdAt,
+    isSynced,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PlannedWorkout &&
+          other.id == this.id &&
+          other.templateId == this.templateId &&
+          other.plannedDate == this.plannedDate &&
+          other.isCompleted == this.isCompleted &&
+          other.createdAt == this.createdAt &&
+          other.isSynced == this.isSynced);
+}
+
+class PlannedWorkoutsCompanion extends UpdateCompanion<PlannedWorkout> {
+  final Value<String> id;
+  final Value<String?> templateId;
+  final Value<DateTime> plannedDate;
+  final Value<bool> isCompleted;
+  final Value<DateTime> createdAt;
+  final Value<bool> isSynced;
+  final Value<int> rowid;
+  const PlannedWorkoutsCompanion({
+    this.id = const Value.absent(),
+    this.templateId = const Value.absent(),
+    this.plannedDate = const Value.absent(),
+    this.isCompleted = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PlannedWorkoutsCompanion.insert({
+    required String id,
+    this.templateId = const Value.absent(),
+    required DateTime plannedDate,
+    this.isCompleted = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       plannedDate = Value(plannedDate);
+  static Insertable<PlannedWorkout> custom({
+    Expression<String>? id,
+    Expression<String>? templateId,
+    Expression<DateTime>? plannedDate,
+    Expression<bool>? isCompleted,
+    Expression<DateTime>? createdAt,
+    Expression<bool>? isSynced,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (templateId != null) 'template_id': templateId,
+      if (plannedDate != null) 'planned_date': plannedDate,
+      if (isCompleted != null) 'is_completed': isCompleted,
+      if (createdAt != null) 'created_at': createdAt,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PlannedWorkoutsCompanion copyWith({
+    Value<String>? id,
+    Value<String?>? templateId,
+    Value<DateTime>? plannedDate,
+    Value<bool>? isCompleted,
+    Value<DateTime>? createdAt,
+    Value<bool>? isSynced,
+    Value<int>? rowid,
+  }) {
+    return PlannedWorkoutsCompanion(
+      id: id ?? this.id,
+      templateId: templateId ?? this.templateId,
+      plannedDate: plannedDate ?? this.plannedDate,
+      isCompleted: isCompleted ?? this.isCompleted,
+      createdAt: createdAt ?? this.createdAt,
+      isSynced: isSynced ?? this.isSynced,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (templateId.present) {
+      map['template_id'] = Variable<String>(templateId.value);
+    }
+    if (plannedDate.present) {
+      map['planned_date'] = Variable<DateTime>(plannedDate.value);
+    }
+    if (isCompleted.present) {
+      map['is_completed'] = Variable<bool>(isCompleted.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlannedWorkoutsCompanion(')
+          ..write('id: $id, ')
+          ..write('templateId: $templateId, ')
+          ..write('plannedDate: $plannedDate, ')
+          ..write('isCompleted: $isCompleted, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $PlannedExercisesTable extends PlannedExercises
+    with TableInfo<$PlannedExercisesTable, PlannedExercise> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $PlannedExercisesTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _plannedWorkoutIdMeta = const VerificationMeta(
+    'plannedWorkoutId',
+  );
+  @override
+  late final GeneratedColumn<String> plannedWorkoutId = GeneratedColumn<String>(
+    'planned_workout_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _exerciseNameMeta = const VerificationMeta(
+    'exerciseName',
+  );
+  @override
+  late final GeneratedColumn<String> exerciseName = GeneratedColumn<String>(
+    'exercise_name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _targetWeightMeta = const VerificationMeta(
+    'targetWeight',
+  );
+  @override
+  late final GeneratedColumn<double> targetWeight = GeneratedColumn<double>(
+    'target_weight',
+    aliasedName,
+    true,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _targetRepsMeta = const VerificationMeta(
+    'targetReps',
+  );
+  @override
+  late final GeneratedColumn<int> targetReps = GeneratedColumn<int>(
+    'target_reps',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _createdAtMeta = const VerificationMeta(
+    'createdAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> createdAt = GeneratedColumn<DateTime>(
+    'created_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    clientDefault: () => DateTime.now(),
+  );
+  static const VerificationMeta _isSyncedMeta = const VerificationMeta(
+    'isSynced',
+  );
+  @override
+  late final GeneratedColumn<bool> isSynced = GeneratedColumn<bool>(
+    'is_synced',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_synced" IN (0, 1))',
+    ),
+    clientDefault: () => false,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    plannedWorkoutId,
+    exerciseName,
+    targetWeight,
+    targetReps,
+    createdAt,
+    isSynced,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'planned_exercises';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<PlannedExercise> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('planned_workout_id')) {
+      context.handle(
+        _plannedWorkoutIdMeta,
+        plannedWorkoutId.isAcceptableOrUnknown(
+          data['planned_workout_id']!,
+          _plannedWorkoutIdMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_plannedWorkoutIdMeta);
+    }
+    if (data.containsKey('exercise_name')) {
+      context.handle(
+        _exerciseNameMeta,
+        exerciseName.isAcceptableOrUnknown(
+          data['exercise_name']!,
+          _exerciseNameMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_exerciseNameMeta);
+    }
+    if (data.containsKey('target_weight')) {
+      context.handle(
+        _targetWeightMeta,
+        targetWeight.isAcceptableOrUnknown(
+          data['target_weight']!,
+          _targetWeightMeta,
+        ),
+      );
+    }
+    if (data.containsKey('target_reps')) {
+      context.handle(
+        _targetRepsMeta,
+        targetReps.isAcceptableOrUnknown(data['target_reps']!, _targetRepsMeta),
+      );
+    }
+    if (data.containsKey('created_at')) {
+      context.handle(
+        _createdAtMeta,
+        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
+      );
+    }
+    if (data.containsKey('is_synced')) {
+      context.handle(
+        _isSyncedMeta,
+        isSynced.isAcceptableOrUnknown(data['is_synced']!, _isSyncedMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  PlannedExercise map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return PlannedExercise(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      plannedWorkoutId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}planned_workout_id'],
+      )!,
+      exerciseName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}exercise_name'],
+      )!,
+      targetWeight: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}target_weight'],
+      ),
+      targetReps: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}target_reps'],
+      ),
+      createdAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}created_at'],
+      )!,
+      isSynced: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_synced'],
+      )!,
+    );
+  }
+
+  @override
+  $PlannedExercisesTable createAlias(String alias) {
+    return $PlannedExercisesTable(attachedDatabase, alias);
+  }
+}
+
+class PlannedExercise extends DataClass implements Insertable<PlannedExercise> {
+  final String id;
+  final String plannedWorkoutId;
+  final String exerciseName;
+  final double? targetWeight;
+  final int? targetReps;
+  final DateTime createdAt;
+  final bool isSynced;
+  const PlannedExercise({
+    required this.id,
+    required this.plannedWorkoutId,
+    required this.exerciseName,
+    this.targetWeight,
+    this.targetReps,
+    required this.createdAt,
+    required this.isSynced,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<String>(id);
+    map['planned_workout_id'] = Variable<String>(plannedWorkoutId);
+    map['exercise_name'] = Variable<String>(exerciseName);
+    if (!nullToAbsent || targetWeight != null) {
+      map['target_weight'] = Variable<double>(targetWeight);
+    }
+    if (!nullToAbsent || targetReps != null) {
+      map['target_reps'] = Variable<int>(targetReps);
+    }
+    map['created_at'] = Variable<DateTime>(createdAt);
+    map['is_synced'] = Variable<bool>(isSynced);
+    return map;
+  }
+
+  PlannedExercisesCompanion toCompanion(bool nullToAbsent) {
+    return PlannedExercisesCompanion(
+      id: Value(id),
+      plannedWorkoutId: Value(plannedWorkoutId),
+      exerciseName: Value(exerciseName),
+      targetWeight: targetWeight == null && nullToAbsent
+          ? const Value.absent()
+          : Value(targetWeight),
+      targetReps: targetReps == null && nullToAbsent
+          ? const Value.absent()
+          : Value(targetReps),
+      createdAt: Value(createdAt),
+      isSynced: Value(isSynced),
+    );
+  }
+
+  factory PlannedExercise.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return PlannedExercise(
+      id: serializer.fromJson<String>(json['id']),
+      plannedWorkoutId: serializer.fromJson<String>(json['plannedWorkoutId']),
+      exerciseName: serializer.fromJson<String>(json['exerciseName']),
+      targetWeight: serializer.fromJson<double?>(json['targetWeight']),
+      targetReps: serializer.fromJson<int?>(json['targetReps']),
+      createdAt: serializer.fromJson<DateTime>(json['createdAt']),
+      isSynced: serializer.fromJson<bool>(json['isSynced']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<String>(id),
+      'plannedWorkoutId': serializer.toJson<String>(plannedWorkoutId),
+      'exerciseName': serializer.toJson<String>(exerciseName),
+      'targetWeight': serializer.toJson<double?>(targetWeight),
+      'targetReps': serializer.toJson<int?>(targetReps),
+      'createdAt': serializer.toJson<DateTime>(createdAt),
+      'isSynced': serializer.toJson<bool>(isSynced),
+    };
+  }
+
+  PlannedExercise copyWith({
+    String? id,
+    String? plannedWorkoutId,
+    String? exerciseName,
+    Value<double?> targetWeight = const Value.absent(),
+    Value<int?> targetReps = const Value.absent(),
+    DateTime? createdAt,
+    bool? isSynced,
+  }) => PlannedExercise(
+    id: id ?? this.id,
+    plannedWorkoutId: plannedWorkoutId ?? this.plannedWorkoutId,
+    exerciseName: exerciseName ?? this.exerciseName,
+    targetWeight: targetWeight.present ? targetWeight.value : this.targetWeight,
+    targetReps: targetReps.present ? targetReps.value : this.targetReps,
+    createdAt: createdAt ?? this.createdAt,
+    isSynced: isSynced ?? this.isSynced,
+  );
+  PlannedExercise copyWithCompanion(PlannedExercisesCompanion data) {
+    return PlannedExercise(
+      id: data.id.present ? data.id.value : this.id,
+      plannedWorkoutId: data.plannedWorkoutId.present
+          ? data.plannedWorkoutId.value
+          : this.plannedWorkoutId,
+      exerciseName: data.exerciseName.present
+          ? data.exerciseName.value
+          : this.exerciseName,
+      targetWeight: data.targetWeight.present
+          ? data.targetWeight.value
+          : this.targetWeight,
+      targetReps: data.targetReps.present
+          ? data.targetReps.value
+          : this.targetReps,
+      createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
+      isSynced: data.isSynced.present ? data.isSynced.value : this.isSynced,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlannedExercise(')
+          ..write('id: $id, ')
+          ..write('plannedWorkoutId: $plannedWorkoutId, ')
+          ..write('exerciseName: $exerciseName, ')
+          ..write('targetWeight: $targetWeight, ')
+          ..write('targetReps: $targetReps, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('isSynced: $isSynced')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    plannedWorkoutId,
+    exerciseName,
+    targetWeight,
+    targetReps,
+    createdAt,
+    isSynced,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is PlannedExercise &&
+          other.id == this.id &&
+          other.plannedWorkoutId == this.plannedWorkoutId &&
+          other.exerciseName == this.exerciseName &&
+          other.targetWeight == this.targetWeight &&
+          other.targetReps == this.targetReps &&
+          other.createdAt == this.createdAt &&
+          other.isSynced == this.isSynced);
+}
+
+class PlannedExercisesCompanion extends UpdateCompanion<PlannedExercise> {
+  final Value<String> id;
+  final Value<String> plannedWorkoutId;
+  final Value<String> exerciseName;
+  final Value<double?> targetWeight;
+  final Value<int?> targetReps;
+  final Value<DateTime> createdAt;
+  final Value<bool> isSynced;
+  final Value<int> rowid;
+  const PlannedExercisesCompanion({
+    this.id = const Value.absent(),
+    this.plannedWorkoutId = const Value.absent(),
+    this.exerciseName = const Value.absent(),
+    this.targetWeight = const Value.absent(),
+    this.targetReps = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  PlannedExercisesCompanion.insert({
+    required String id,
+    required String plannedWorkoutId,
+    required String exerciseName,
+    this.targetWeight = const Value.absent(),
+    this.targetReps = const Value.absent(),
+    this.createdAt = const Value.absent(),
+    this.isSynced = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       plannedWorkoutId = Value(plannedWorkoutId),
+       exerciseName = Value(exerciseName);
+  static Insertable<PlannedExercise> custom({
+    Expression<String>? id,
+    Expression<String>? plannedWorkoutId,
+    Expression<String>? exerciseName,
+    Expression<double>? targetWeight,
+    Expression<int>? targetReps,
+    Expression<DateTime>? createdAt,
+    Expression<bool>? isSynced,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (plannedWorkoutId != null) 'planned_workout_id': plannedWorkoutId,
+      if (exerciseName != null) 'exercise_name': exerciseName,
+      if (targetWeight != null) 'target_weight': targetWeight,
+      if (targetReps != null) 'target_reps': targetReps,
+      if (createdAt != null) 'created_at': createdAt,
+      if (isSynced != null) 'is_synced': isSynced,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  PlannedExercisesCompanion copyWith({
+    Value<String>? id,
+    Value<String>? plannedWorkoutId,
+    Value<String>? exerciseName,
+    Value<double?>? targetWeight,
+    Value<int?>? targetReps,
+    Value<DateTime>? createdAt,
+    Value<bool>? isSynced,
+    Value<int>? rowid,
+  }) {
+    return PlannedExercisesCompanion(
+      id: id ?? this.id,
+      plannedWorkoutId: plannedWorkoutId ?? this.plannedWorkoutId,
+      exerciseName: exerciseName ?? this.exerciseName,
+      targetWeight: targetWeight ?? this.targetWeight,
+      targetReps: targetReps ?? this.targetReps,
+      createdAt: createdAt ?? this.createdAt,
+      isSynced: isSynced ?? this.isSynced,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (plannedWorkoutId.present) {
+      map['planned_workout_id'] = Variable<String>(plannedWorkoutId.value);
+    }
+    if (exerciseName.present) {
+      map['exercise_name'] = Variable<String>(exerciseName.value);
+    }
+    if (targetWeight.present) {
+      map['target_weight'] = Variable<double>(targetWeight.value);
+    }
+    if (targetReps.present) {
+      map['target_reps'] = Variable<int>(targetReps.value);
+    }
+    if (createdAt.present) {
+      map['created_at'] = Variable<DateTime>(createdAt.value);
+    }
+    if (isSynced.present) {
+      map['is_synced'] = Variable<bool>(isSynced.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('PlannedExercisesCompanion(')
+          ..write('id: $id, ')
+          ..write('plannedWorkoutId: $plannedWorkoutId, ')
+          ..write('exerciseName: $exerciseName, ')
+          ..write('targetWeight: $targetWeight, ')
+          ..write('targetReps: $targetReps, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('isSynced: $isSynced, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$AppDatabase extends GeneratedDatabase {
   _$AppDatabase(QueryExecutor e) : super(e);
   $AppDatabaseManager get managers => $AppDatabaseManager(this);
@@ -1929,6 +3076,12 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $WorkoutSetsTable workoutSets = $WorkoutSetsTable(this);
   late final $PendingSyncActionsTable pendingSyncActions =
       $PendingSyncActionsTable(this);
+  late final $PlannedWorkoutsTable plannedWorkouts = $PlannedWorkoutsTable(
+    this,
+  );
+  late final $PlannedExercisesTable plannedExercises = $PlannedExercisesTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -1939,6 +3092,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     workoutLogs,
     workoutSets,
     pendingSyncActions,
+    plannedWorkouts,
+    plannedExercises,
   ];
 }
 
@@ -2136,6 +3291,9 @@ typedef $$TemplateExercisesTableCreateCompanionBuilder =
       required String muscleGroup,
       required String exerciseName,
       Value<String?> supersetId,
+      Value<String?> progressionRule,
+      Value<int?> progressionTargetReps,
+      Value<double?> progressionTargetWeightIncrease,
       Value<DateTime> createdAt,
       Value<bool> isSynced,
       Value<int> rowid,
@@ -2147,6 +3305,9 @@ typedef $$TemplateExercisesTableUpdateCompanionBuilder =
       Value<String> muscleGroup,
       Value<String> exerciseName,
       Value<String?> supersetId,
+      Value<String?> progressionRule,
+      Value<int?> progressionTargetReps,
+      Value<double?> progressionTargetWeightIncrease,
       Value<DateTime> createdAt,
       Value<bool> isSynced,
       Value<int> rowid,
@@ -2185,6 +3346,22 @@ class $$TemplateExercisesTableFilterComposer
     column: $table.supersetId,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<String> get progressionRule => $composableBuilder(
+    column: $table.progressionRule,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get progressionTargetReps => $composableBuilder(
+    column: $table.progressionTargetReps,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get progressionTargetWeightIncrease =>
+      $composableBuilder(
+        column: $table.progressionTargetWeightIncrease,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
@@ -2231,6 +3408,22 @@ class $$TemplateExercisesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get progressionRule => $composableBuilder(
+    column: $table.progressionRule,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get progressionTargetReps => $composableBuilder(
+    column: $table.progressionTargetReps,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get progressionTargetWeightIncrease =>
+      $composableBuilder(
+        column: $table.progressionTargetWeightIncrease,
+        builder: (column) => ColumnOrderings(column),
+      );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -2273,6 +3466,22 @@ class $$TemplateExercisesTableAnnotationComposer
     column: $table.supersetId,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get progressionRule => $composableBuilder(
+    column: $table.progressionRule,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get progressionTargetReps => $composableBuilder(
+    column: $table.progressionTargetReps,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get progressionTargetWeightIncrease =>
+      $composableBuilder(
+        column: $table.progressionTargetWeightIncrease,
+        builder: (column) => column,
+      );
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -2326,6 +3535,10 @@ class $$TemplateExercisesTableTableManager
                 Value<String> muscleGroup = const Value.absent(),
                 Value<String> exerciseName = const Value.absent(),
                 Value<String?> supersetId = const Value.absent(),
+                Value<String?> progressionRule = const Value.absent(),
+                Value<int?> progressionTargetReps = const Value.absent(),
+                Value<double?> progressionTargetWeightIncrease =
+                    const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -2335,6 +3548,10 @@ class $$TemplateExercisesTableTableManager
                 muscleGroup: muscleGroup,
                 exerciseName: exerciseName,
                 supersetId: supersetId,
+                progressionRule: progressionRule,
+                progressionTargetReps: progressionTargetReps,
+                progressionTargetWeightIncrease:
+                    progressionTargetWeightIncrease,
                 createdAt: createdAt,
                 isSynced: isSynced,
                 rowid: rowid,
@@ -2346,6 +3563,10 @@ class $$TemplateExercisesTableTableManager
                 required String muscleGroup,
                 required String exerciseName,
                 Value<String?> supersetId = const Value.absent(),
+                Value<String?> progressionRule = const Value.absent(),
+                Value<int?> progressionTargetReps = const Value.absent(),
+                Value<double?> progressionTargetWeightIncrease =
+                    const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -2355,6 +3576,10 @@ class $$TemplateExercisesTableTableManager
                 muscleGroup: muscleGroup,
                 exerciseName: exerciseName,
                 supersetId: supersetId,
+                progressionRule: progressionRule,
+                progressionTargetReps: progressionTargetReps,
+                progressionTargetWeightIncrease:
+                    progressionTargetWeightIncrease,
                 createdAt: createdAt,
                 isSynced: isSynced,
                 rowid: rowid,
@@ -2578,6 +3803,7 @@ typedef $$WorkoutSetsTableCreateCompanionBuilder =
       required String exerciseName,
       required double weight,
       required int reps,
+      Value<String?> note,
       Value<DateTime> createdAt,
       Value<bool> isSynced,
       Value<int> rowid,
@@ -2589,6 +3815,7 @@ typedef $$WorkoutSetsTableUpdateCompanionBuilder =
       Value<String> exerciseName,
       Value<double> weight,
       Value<int> reps,
+      Value<String?> note,
       Value<DateTime> createdAt,
       Value<bool> isSynced,
       Value<int> rowid,
@@ -2625,6 +3852,11 @@ class $$WorkoutSetsTableFilterComposer
 
   ColumnFilters<int> get reps => $composableBuilder(
     column: $table.reps,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get note => $composableBuilder(
+    column: $table.note,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2673,6 +3905,11 @@ class $$WorkoutSetsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get note => $composableBuilder(
+    column: $table.note,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<DateTime> get createdAt => $composableBuilder(
     column: $table.createdAt,
     builder: (column) => ColumnOrderings(column),
@@ -2711,6 +3948,9 @@ class $$WorkoutSetsTableAnnotationComposer
 
   GeneratedColumn<int> get reps =>
       $composableBuilder(column: $table.reps, builder: (column) => column);
+
+  GeneratedColumn<String> get note =>
+      $composableBuilder(column: $table.note, builder: (column) => column);
 
   GeneratedColumn<DateTime> get createdAt =>
       $composableBuilder(column: $table.createdAt, builder: (column) => column);
@@ -2755,6 +3995,7 @@ class $$WorkoutSetsTableTableManager
                 Value<String> exerciseName = const Value.absent(),
                 Value<double> weight = const Value.absent(),
                 Value<int> reps = const Value.absent(),
+                Value<String?> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -2764,6 +4005,7 @@ class $$WorkoutSetsTableTableManager
                 exerciseName: exerciseName,
                 weight: weight,
                 reps: reps,
+                note: note,
                 createdAt: createdAt,
                 isSynced: isSynced,
                 rowid: rowid,
@@ -2775,6 +4017,7 @@ class $$WorkoutSetsTableTableManager
                 required String exerciseName,
                 required double weight,
                 required int reps,
+                Value<String?> note = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<bool> isSynced = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -2784,6 +4027,7 @@ class $$WorkoutSetsTableTableManager
                 exerciseName: exerciseName,
                 weight: weight,
                 reps: reps,
+                note: note,
                 createdAt: createdAt,
                 isSynced: isSynced,
                 rowid: rowid,
@@ -3022,6 +4266,489 @@ typedef $$PendingSyncActionsTableProcessedTableManager =
       PendingSyncAction,
       PrefetchHooks Function()
     >;
+typedef $$PlannedWorkoutsTableCreateCompanionBuilder =
+    PlannedWorkoutsCompanion Function({
+      required String id,
+      Value<String?> templateId,
+      required DateTime plannedDate,
+      Value<bool> isCompleted,
+      Value<DateTime> createdAt,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+typedef $$PlannedWorkoutsTableUpdateCompanionBuilder =
+    PlannedWorkoutsCompanion Function({
+      Value<String> id,
+      Value<String?> templateId,
+      Value<DateTime> plannedDate,
+      Value<bool> isCompleted,
+      Value<DateTime> createdAt,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+
+class $$PlannedWorkoutsTableFilterComposer
+    extends Composer<_$AppDatabase, $PlannedWorkoutsTable> {
+  $$PlannedWorkoutsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get templateId => $composableBuilder(
+    column: $table.templateId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get plannedDate => $composableBuilder(
+    column: $table.plannedDate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isCompleted => $composableBuilder(
+    column: $table.isCompleted,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PlannedWorkoutsTableOrderingComposer
+    extends Composer<_$AppDatabase, $PlannedWorkoutsTable> {
+  $$PlannedWorkoutsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get templateId => $composableBuilder(
+    column: $table.templateId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get plannedDate => $composableBuilder(
+    column: $table.plannedDate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isCompleted => $composableBuilder(
+    column: $table.isCompleted,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PlannedWorkoutsTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PlannedWorkoutsTable> {
+  $$PlannedWorkoutsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get templateId => $composableBuilder(
+    column: $table.templateId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get plannedDate => $composableBuilder(
+    column: $table.plannedDate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get isCompleted => $composableBuilder(
+    column: $table.isCompleted,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+}
+
+class $$PlannedWorkoutsTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PlannedWorkoutsTable,
+          PlannedWorkout,
+          $$PlannedWorkoutsTableFilterComposer,
+          $$PlannedWorkoutsTableOrderingComposer,
+          $$PlannedWorkoutsTableAnnotationComposer,
+          $$PlannedWorkoutsTableCreateCompanionBuilder,
+          $$PlannedWorkoutsTableUpdateCompanionBuilder,
+          (
+            PlannedWorkout,
+            BaseReferences<
+              _$AppDatabase,
+              $PlannedWorkoutsTable,
+              PlannedWorkout
+            >,
+          ),
+          PlannedWorkout,
+          PrefetchHooks Function()
+        > {
+  $$PlannedWorkoutsTableTableManager(
+    _$AppDatabase db,
+    $PlannedWorkoutsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PlannedWorkoutsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PlannedWorkoutsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PlannedWorkoutsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String?> templateId = const Value.absent(),
+                Value<DateTime> plannedDate = const Value.absent(),
+                Value<bool> isCompleted = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PlannedWorkoutsCompanion(
+                id: id,
+                templateId: templateId,
+                plannedDate: plannedDate,
+                isCompleted: isCompleted,
+                createdAt: createdAt,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                Value<String?> templateId = const Value.absent(),
+                required DateTime plannedDate,
+                Value<bool> isCompleted = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PlannedWorkoutsCompanion.insert(
+                id: id,
+                templateId: templateId,
+                plannedDate: plannedDate,
+                isCompleted: isCompleted,
+                createdAt: createdAt,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PlannedWorkoutsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PlannedWorkoutsTable,
+      PlannedWorkout,
+      $$PlannedWorkoutsTableFilterComposer,
+      $$PlannedWorkoutsTableOrderingComposer,
+      $$PlannedWorkoutsTableAnnotationComposer,
+      $$PlannedWorkoutsTableCreateCompanionBuilder,
+      $$PlannedWorkoutsTableUpdateCompanionBuilder,
+      (
+        PlannedWorkout,
+        BaseReferences<_$AppDatabase, $PlannedWorkoutsTable, PlannedWorkout>,
+      ),
+      PlannedWorkout,
+      PrefetchHooks Function()
+    >;
+typedef $$PlannedExercisesTableCreateCompanionBuilder =
+    PlannedExercisesCompanion Function({
+      required String id,
+      required String plannedWorkoutId,
+      required String exerciseName,
+      Value<double?> targetWeight,
+      Value<int?> targetReps,
+      Value<DateTime> createdAt,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+typedef $$PlannedExercisesTableUpdateCompanionBuilder =
+    PlannedExercisesCompanion Function({
+      Value<String> id,
+      Value<String> plannedWorkoutId,
+      Value<String> exerciseName,
+      Value<double?> targetWeight,
+      Value<int?> targetReps,
+      Value<DateTime> createdAt,
+      Value<bool> isSynced,
+      Value<int> rowid,
+    });
+
+class $$PlannedExercisesTableFilterComposer
+    extends Composer<_$AppDatabase, $PlannedExercisesTable> {
+  $$PlannedExercisesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get plannedWorkoutId => $composableBuilder(
+    column: $table.plannedWorkoutId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get exerciseName => $composableBuilder(
+    column: $table.exerciseName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get targetWeight => $composableBuilder(
+    column: $table.targetWeight,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get targetReps => $composableBuilder(
+    column: $table.targetReps,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$PlannedExercisesTableOrderingComposer
+    extends Composer<_$AppDatabase, $PlannedExercisesTable> {
+  $$PlannedExercisesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get plannedWorkoutId => $composableBuilder(
+    column: $table.plannedWorkoutId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get exerciseName => $composableBuilder(
+    column: $table.exerciseName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get targetWeight => $composableBuilder(
+    column: $table.targetWeight,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get targetReps => $composableBuilder(
+    column: $table.targetReps,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get createdAt => $composableBuilder(
+    column: $table.createdAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isSynced => $composableBuilder(
+    column: $table.isSynced,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$PlannedExercisesTableAnnotationComposer
+    extends Composer<_$AppDatabase, $PlannedExercisesTable> {
+  $$PlannedExercisesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get plannedWorkoutId => $composableBuilder(
+    column: $table.plannedWorkoutId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get exerciseName => $composableBuilder(
+    column: $table.exerciseName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get targetWeight => $composableBuilder(
+    column: $table.targetWeight,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get targetReps => $composableBuilder(
+    column: $table.targetReps,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<DateTime> get createdAt =>
+      $composableBuilder(column: $table.createdAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get isSynced =>
+      $composableBuilder(column: $table.isSynced, builder: (column) => column);
+}
+
+class $$PlannedExercisesTableTableManager
+    extends
+        RootTableManager<
+          _$AppDatabase,
+          $PlannedExercisesTable,
+          PlannedExercise,
+          $$PlannedExercisesTableFilterComposer,
+          $$PlannedExercisesTableOrderingComposer,
+          $$PlannedExercisesTableAnnotationComposer,
+          $$PlannedExercisesTableCreateCompanionBuilder,
+          $$PlannedExercisesTableUpdateCompanionBuilder,
+          (
+            PlannedExercise,
+            BaseReferences<
+              _$AppDatabase,
+              $PlannedExercisesTable,
+              PlannedExercise
+            >,
+          ),
+          PlannedExercise,
+          PrefetchHooks Function()
+        > {
+  $$PlannedExercisesTableTableManager(
+    _$AppDatabase db,
+    $PlannedExercisesTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$PlannedExercisesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$PlannedExercisesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$PlannedExercisesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> plannedWorkoutId = const Value.absent(),
+                Value<String> exerciseName = const Value.absent(),
+                Value<double?> targetWeight = const Value.absent(),
+                Value<int?> targetReps = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PlannedExercisesCompanion(
+                id: id,
+                plannedWorkoutId: plannedWorkoutId,
+                exerciseName: exerciseName,
+                targetWeight: targetWeight,
+                targetReps: targetReps,
+                createdAt: createdAt,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String plannedWorkoutId,
+                required String exerciseName,
+                Value<double?> targetWeight = const Value.absent(),
+                Value<int?> targetReps = const Value.absent(),
+                Value<DateTime> createdAt = const Value.absent(),
+                Value<bool> isSynced = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => PlannedExercisesCompanion.insert(
+                id: id,
+                plannedWorkoutId: plannedWorkoutId,
+                exerciseName: exerciseName,
+                targetWeight: targetWeight,
+                targetReps: targetReps,
+                createdAt: createdAt,
+                isSynced: isSynced,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$PlannedExercisesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$AppDatabase,
+      $PlannedExercisesTable,
+      PlannedExercise,
+      $$PlannedExercisesTableFilterComposer,
+      $$PlannedExercisesTableOrderingComposer,
+      $$PlannedExercisesTableAnnotationComposer,
+      $$PlannedExercisesTableCreateCompanionBuilder,
+      $$PlannedExercisesTableUpdateCompanionBuilder,
+      (
+        PlannedExercise,
+        BaseReferences<_$AppDatabase, $PlannedExercisesTable, PlannedExercise>,
+      ),
+      PlannedExercise,
+      PrefetchHooks Function()
+    >;
 
 class $AppDatabaseManager {
   final _$AppDatabase _db;
@@ -3036,4 +4763,8 @@ class $AppDatabaseManager {
       $$WorkoutSetsTableTableManager(_db, _db.workoutSets);
   $$PendingSyncActionsTableTableManager get pendingSyncActions =>
       $$PendingSyncActionsTableTableManager(_db, _db.pendingSyncActions);
+  $$PlannedWorkoutsTableTableManager get plannedWorkouts =>
+      $$PlannedWorkoutsTableTableManager(_db, _db.plannedWorkouts);
+  $$PlannedExercisesTableTableManager get plannedExercises =>
+      $$PlannedExercisesTableTableManager(_db, _db.plannedExercises);
 }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gym/gym_provider.dart';
 import 'package:gym/routine_detail_screen.dart';
+import 'package:gym/widgets/create_template_modal.dart';
 
 class GymTab extends ConsumerStatefulWidget {
   const GymTab({super.key});
@@ -12,6 +13,50 @@ class GymTab extends ConsumerStatefulWidget {
 
 class _GymTabState extends ConsumerState<GymTab> {
   bool _forceShowTemplates = false;
+
+  void _showEditTemplateModal(WorkoutTemplateWithExercises item) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF1A1A1A),
+      isScrollControlled: true,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (context) => SafeArea(child: CreateTemplateModal(template: item)),
+    );
+  }
+
+  Future<void> _confirmDeleteTemplate(WorkoutTemplateWithExercises item) async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A1A),
+        title: const Text('Eliminar rutina', style: TextStyle(color: Colors.white)),
+        content: Text(
+          'Se eliminara "${item.template.name}" y sus planes futuros del calendario.',
+          style: const TextStyle(color: Colors.white70),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            style: FilledButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Eliminar'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed != true) return;
+    ref.read(gymTemplatesProvider.notifier).deleteTemplate(item.template.id);
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Rutina "${item.template.name}" eliminada')),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -147,15 +192,55 @@ class _GymTabState extends ConsumerState<GymTab> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            item.template.name,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.white,
-                            ),
+                          Row(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  item.template.name,
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                              PopupMenuButton<String>(
+                                icon: const Icon(Icons.more_vert, color: Colors.grey),
+                                color: const Color(0xFF242424),
+                                onSelected: (value) {
+                                  if (value == 'edit') {
+                                    _showEditTemplateModal(item);
+                                  } else if (value == 'delete') {
+                                    _confirmDeleteTemplate(item);
+                                  }
+                                },
+                                itemBuilder: (context) => const [
+                                  PopupMenuItem(
+                                    value: 'edit',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.edit, color: Colors.white70, size: 18),
+                                        SizedBox(width: 8),
+                                        Text('Editar', style: TextStyle(color: Colors.white)),
+                                      ],
+                                    ),
+                                  ),
+                                  PopupMenuItem(
+                                    value: 'delete',
+                                    child: Row(
+                                      children: [
+                                        Icon(Icons.delete_outline, color: Colors.redAccent, size: 18),
+                                        SizedBox(width: 8),
+                                        Text('Eliminar', style: TextStyle(color: Colors.redAccent)),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
                           ),
                           const SizedBox(height: 8),
                           Wrap(

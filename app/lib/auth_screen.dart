@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:app/main.dart'; // Para redirigir a MainNavigationScreen
 
 class AuthScreen extends StatefulWidget {
   const AuthScreen({super.key});
