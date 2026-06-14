@@ -620,6 +620,8 @@ class GymRepository {
           return null;
         });
 
+    await _refreshPlannedWorkoutCompletionForLog(workoutLogId);
+
     return setId;
   }
 
@@ -652,6 +654,12 @@ class GymRepository {
   }
 
   Future<void> deleteWorkoutSet(String setId) async {
+    final set = await (_database.select(_database.workoutSets)
+          ..where((s) => s.id.equals(setId))
+          ..limit(1))
+        .getSingleOrNull();
+    final workoutLogId = set?.workoutLogId;
+
     // 1. Registrar borrado pendiente
     await _database.into(_database.pendingSyncActions).insert(
           PendingSyncActionsCompanion.insert(
@@ -675,9 +683,38 @@ class GymRepository {
     } catch (e) {
       print('Set borrado localmente. Pendiente de sync.');
     }
+
+    if (workoutLogId != null) {
+      await _refreshPlannedWorkoutCompletionForLog(workoutLogId);
+    }
   }
 
   // --- 6. Planificación (Calendario) ---
+  Future<void> _refreshPlannedWorkoutCompletionForLog(String workoutLogId) async {
+    final log = await (_database.select(_database.workoutLogs)
+          ..where((l) => l.id.equals(workoutLogId))
+          ..limit(1))
+        .getSingleOrNull();
+    if (log?.templateId == null) return;
+
+    final dayStart = _dateOnly(log!.date);
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    final dayPlans = await (_database.select(_database.plannedWorkouts)
+          ..where(
+            (p) =>
+                p.templateId.equals(log.templateId!) &
+                p.plannedDate.isBiggerOrEqualValue(dayStart) &
+                p.plannedDate.isSmallerThanValue(dayEnd),
+          ))
+        .get();
+
+    for (final plan in dayPlans) {
+      final isCompleted = await _hasCompletedWorkoutForPlan(plan);
+      if (plan.isCompleted == isCompleted) continue;
+      await _setPlannedWorkoutCompletion(plan.id, isCompleted);
+    }
+  }
+
   Future<String> scheduleWorkout(String templateId, DateTime plannedDate) async {
     final id = _uuid.v4();
     final now = DateTime.now();
@@ -786,6 +823,28 @@ class GymRepository {
     });
   }
 
+  Future<void> _setPlannedWorkoutCompletion(String id, bool isCompleted) async {
+    await (_database.update(_database.plannedWorkouts)
+          ..where((t) => t.id.equals(id)))
+        .write(
+      PlannedWorkoutsCompanion(
+        isCompleted: Value(isCompleted),
+        isSynced: const Value(false),
+      ),
+    );
+
+    _supabaseClient.from('planned_workouts').update({
+      'is_completed': isCompleted,
+    }).eq('id', id).then((_) {
+      (_database.update(_database.plannedWorkouts)
+            ..where((t) => t.id.equals(id)))
+          .write(const PlannedWorkoutsCompanion(isSynced: Value(true)));
+    }).catchError((e) {
+      print('Error sync planned workout completion: $e');
+      return null;
+    });
+  }
+
   Future<void> updatePlannedWorkoutTemplate(String id, String templateId) async {
     await (_database.update(_database.plannedWorkouts)
           ..where((t) => t.id.equals(id)))
@@ -844,6 +903,7 @@ class GymRepository {
   Future<void> autoShiftPlannedWorkouts() async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
+    await _reconcileCompletedPlannedWorkouts(upToDate: today);
 
     // Encontrar el plan pendiente (is_completed = false) más antiguo
     final oldestPending = await (_database.select(_database.plannedWorkouts)
@@ -874,6 +934,50 @@ class GymRepository {
       }
       print('✅ Auto-Shift completado: Se recorrieron $daysToShift días.');
     }
+  }
+
+  Future<void> _reconcileCompletedPlannedWorkouts({required DateTime upToDate}) async {
+    final upToExclusive = _dateOnly(upToDate).add(const Duration(days: 1));
+    final candidates = await (_database.select(_database.plannedWorkouts)
+          ..where(
+            (p) =>
+                p.isCompleted.equals(false) &
+                p.templateId.isNotNull() &
+                p.plannedDate.isSmallerThanValue(upToExclusive),
+          ))
+        .get();
+
+    for (final plan in candidates) {
+      if (await _hasCompletedWorkoutForPlan(plan)) {
+        await _setPlannedWorkoutCompletion(plan.id, true);
+      }
+    }
+  }
+
+  Future<bool> _hasCompletedWorkoutForPlan(PlannedWorkout plan) async {
+    final templateId = plan.templateId;
+    if (templateId == null) return false;
+
+    final dayStart = _dateOnly(plan.plannedDate);
+    final dayEnd = dayStart.add(const Duration(days: 1));
+    final logs = await (_database.select(_database.workoutLogs)
+          ..where(
+            (l) =>
+                l.templateId.equals(templateId) &
+                l.date.isBiggerOrEqualValue(dayStart) &
+                l.date.isSmallerThanValue(dayEnd),
+          ))
+        .get();
+
+    for (final log in logs) {
+      final set = await (_database.select(_database.workoutSets)
+            ..where((s) => s.workoutLogId.equals(log.id))
+            ..limit(1))
+          .getSingleOrNull();
+      if (set != null) return true;
+    }
+
+    return false;
   }
 
   // Generador de Patrones

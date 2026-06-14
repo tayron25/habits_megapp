@@ -17,6 +17,7 @@ class _GymCalendarTabState extends ConsumerState<GymCalendarTab> {
   late DateTime _selectedDate;
   late DateTime _weekStart;
   final Set<DateTime> _selectedDays = {};
+  final Set<String> _pendingDeletePlanIds = {};
 
   bool get _selectionMode => _selectedDays.isNotEmpty;
 
@@ -142,8 +143,12 @@ class _GymCalendarTabState extends ConsumerState<GymCalendarTab> {
   Future<void> _deletePlansWithUndo(List<PlannedWorkout> plans) async {
     if (plans.isEmpty) return;
 
+    final ids = plans.map((plan) => plan.id).toSet();
     Navigator.of(context).maybePop();
-    setState(_selectedDays.clear);
+    setState(() {
+      _selectedDays.clear();
+      _pendingDeletePlanIds.addAll(ids);
+    });
 
     final messenger = ScaffoldMessenger.of(context);
     messenger.clearSnackBars();
@@ -163,8 +168,15 @@ class _GymCalendarTabState extends ConsumerState<GymCalendarTab> {
     );
 
     final reason = await controller.closed;
-    if (reason == SnackBarClosedReason.action) return;
-    await ref.read(gymRepositoryProvider).deletePlannedWorkouts(plans.map((plan) => plan.id).toList());
+    if (reason == SnackBarClosedReason.action) {
+      if (!mounted) return;
+      setState(() => _pendingDeletePlanIds.removeAll(ids));
+      return;
+    }
+
+    await ref.read(gymRepositoryProvider).deletePlannedWorkouts(ids.toList());
+    if (!mounted) return;
+    setState(() => _pendingDeletePlanIds.removeAll(ids));
   }
 
   @override
@@ -175,7 +187,10 @@ class _GymCalendarTabState extends ConsumerState<GymCalendarTab> {
     return plansAsync.when(
       loading: () => const Center(child: CircularProgressIndicator()),
       error: (error, _) => Center(child: Text('Error: $error')),
-      data: (plans) {
+      data: (rawPlans) {
+        final plans = rawPlans
+            .where((plan) => !_pendingDeletePlanIds.contains(plan.id))
+            .toList();
         final templates = templatesAsync.value ?? [];
         final selectedPlans = plans
             .where((plan) => _selectedDays.any((day) => _isSameDay(day, plan.plannedDate)))
