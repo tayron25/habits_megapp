@@ -247,6 +247,8 @@ class GymRepository {
     String? templateId,
     List<Map<String, dynamic>> sets,
   ) async {
+    if (sets.isEmpty) return;
+
     final logId = _uuid.v4();
     final logDate = DateTime.now();
 
@@ -317,18 +319,22 @@ class GymRepository {
   }
 
   // --- 3. Obtener el Log de hoy (o crearlo) para una plantilla ---
-  Future<String> getOrCreateTodayWorkoutLog(String templateId) async {
+  Future<WorkoutLog?> getTodayWorkoutLogForTemplate(String templateId) async {
     final now = DateTime.now();
     final todayStart = DateTime(now.year, now.month, now.day);
     final todayEnd = DateTime(now.year, now.month, now.day, 23, 59, 59);
 
-    final existingLog =
-        await (_database.select(_database.workoutLogs)..where(
-              (l) =>
-                  l.templateId.equals(templateId) &
-                  l.date.isBetweenValues(todayStart, todayEnd),
-            )..limit(1))
-            .getSingleOrNull();
+    return (_database.select(_database.workoutLogs)..where(
+          (l) =>
+              l.templateId.equals(templateId) &
+              l.date.isBetweenValues(todayStart, todayEnd),
+        )..limit(1))
+        .getSingleOrNull();
+  }
+
+  Future<String> getOrCreateTodayWorkoutLog(String templateId) async {
+    final now = DateTime.now();
+    final existingLog = await getTodayWorkoutLogForTemplate(templateId);
 
     if (existingLog != null) {
       return existingLog.id;

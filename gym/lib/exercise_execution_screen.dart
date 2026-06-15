@@ -96,7 +96,7 @@ class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScree
     final repo = ref.read(gymRepositoryProvider);
 
     try {
-      _workoutLogId = await repo.getOrCreateTodayWorkoutLog(widget.templateId);
+      _workoutLogId = (await repo.getTodayWorkoutLogForTemplate(widget.templateId))?.id;
 
       for (var ex in _activeExercises) {
         await _initExerciseData(ex.exerciseName);
@@ -112,7 +112,9 @@ class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScree
 
   Future<void> _initExerciseData(String exName) async {
     final repo = ref.read(gymRepositoryProvider);
-    final todaySets = await repo.getSetsForLogAndExercise(_workoutLogId!, exName);
+    final todaySets = _workoutLogId == null
+        ? <WorkoutSet>[]
+        : await repo.getSetsForLogAndExercise(_workoutLogId!, exName);
 
     final lastSets = await repo.getLastWorkoutSets(exName, excludeLogId: _workoutLogId);
     final List<ExerciseSetDraft> drafts = [];
@@ -131,7 +133,12 @@ class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScree
     // 2. Autocompletar (pre-cargar) el resto de los sets basados en la sesión anterior
     final targetSetCount = lastSets.isNotEmpty ? lastSets.length : 1;
     for (int i = drafts.length; i < targetSetCount; i++) {
-      final suggested = await repo.getSuggestedNextSet(exName, i, currentLogId: _workoutLogId);
+      final suggested = await repo.getSuggestedNextSet(
+        exName,
+        i,
+        currentLogId: _workoutLogId,
+        templateId: widget.templateId,
+      );
       if (suggested != null) {
         drafts.add(ExerciseSetDraft(weight: suggested.weight, reps: suggested.reps));
       } else {
@@ -324,7 +331,12 @@ class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScree
     int nextReps = 0;
 
     // AUTOCOMPLETADO INTELIGENTE: Predice el siguiente set basado en la última sesión
-    final suggested = await repo.getSuggestedNextSet(exName, currentSetCount, currentLogId: _workoutLogId);
+    final suggested = await repo.getSuggestedNextSet(
+      exName,
+      currentSetCount,
+      currentLogId: _workoutLogId,
+      templateId: widget.templateId,
+    );
     if (suggested != null) {
       nextWeight = suggested.weight;
       nextReps = suggested.reps;
@@ -354,6 +366,7 @@ class _ExerciseExecutionScreenState extends ConsumerState<ExerciseExecutionScree
     final repo = ref.read(gymRepositoryProvider);
 
     if (!s.isCompleted) {
+      _workoutLogId ??= await repo.getOrCreateTodayWorkoutLog(widget.templateId);
       final newId = await repo.addWorkoutSet(
         workoutLogId: _workoutLogId!,
         exerciseName: exName,
